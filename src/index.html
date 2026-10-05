@@ -1,0 +1,2349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>AI模拟飞行</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+       background:#05080d;color:#dbe6f0;user-select:none;-webkit-font-smoothing:antialiased}
+  #app{display:flex;height:100vh;height:100dvh}
+  #panel{width:326px;flex:none;background:#0a1017;border-right:1px solid #16222e;
+         display:flex;flex-direction:column;overflow:hidden}
+  .ph{padding:14px 16px 12px;border-bottom:1px solid #16222e;display:flex;gap:10px;align-items:center;flex:none}
+  .ph .mark{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
+            font-size:17px;background:linear-gradient(145deg,#0ea5e9,#0369a1);
+            box-shadow:0 4px 14px rgba(14,165,233,.3)}
+  .ph h1{font-size:13.5px;font-weight:700}
+  .ph p{font-size:10px;color:#4f657a;margin-top:2px}
+  .sec{padding:12px 16px;border-bottom:1px solid #16222e}
+  .sec h2{font-size:10px;color:#4f657a;letter-spacing:.13em;margin-bottom:9px;
+          text-transform:uppercase;font-weight:700;
+          display:flex;justify-content:space-between;align-items:center}
+  .sec h2 em{font-style:normal;color:#38bdf8;background:#14202b;
+             padding:1px 7px;border-radius:9px;font-size:10px;letter-spacing:0}
+  .sec.grow{flex:1;min-height:0;display:flex;flex-direction:column;padding-bottom:8px}
+  label{display:block;font-size:10.5px;color:#617a90;margin-bottom:4px}
+  .iw{display:flex;align-items:center;background:#101a23;border:1px solid #1b2836;
+      border-radius:7px;padding:0 10px;margin-bottom:7px;transition:.15s}
+  .iw:focus-within{border-color:#0ea5e9;box-shadow:0 0 0 3px rgba(14,165,233,.12)}
+  .iw input{flex:1;min-width:0;background:none;border:none;outline:none;color:#dbe6f0;
+            font-size:13px;font-weight:600;padding:8px 0;font-family:inherit;
+            font-variant-numeric:tabular-nums}
+  .iw span{font-size:10.5px;color:#4f657a;margin-left:5px;flex:none}
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  input[type=number]{-moz-appearance:textfield}
+  select{width:100%;background:#101a23;border:1px solid #1b2836;color:#dbe6f0;
+         border-radius:7px;padding:8px 10px;font-size:12.5px;outline:none;
+         font-family:inherit;font-weight:600;margin-bottom:7px;cursor:pointer;
+         -webkit-appearance:none;appearance:none;
+         background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234f657a'/%3E%3C/svg%3E");
+         background-repeat:no-repeat;background-position:right 11px center}
+  select:focus{border-color:#0ea5e9}
+  .wp-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:5px;
+           padding-right:3px;min-height:50px}
+  .wp-list::-webkit-scrollbar{width:5px}
+  .wp-list::-webkit-scrollbar-thumb{background:#1b2836;border-radius:3px}
+  .empty{text-align:center;padding:20px 10px;color:#3a4d5e;font-size:11.5px;
+         border:1px dashed #1b2836;border-radius:9px;line-height:1.7}
+  .empty b{display:block;color:#4f657a;font-size:12px;font-weight:600;margin-bottom:2px}
+  .wp{display:flex;align-items:center;gap:8px;background:#101a23;
+      border:1px solid #16222e;border-radius:8px;padding:6px 8px;cursor:pointer;transition:.15s}
+  .wp:hover{border-color:#243748;background:#131f2a}
+  .wp-i{width:20px;height:20px;border-radius:50%;flex:none;
+        background:linear-gradient(180deg,#38bdf8,#0284c7);color:#04121c;
+        font-size:10px;font-weight:800;display:grid;place-items:center}
+  .wp-t{flex:1;min-width:0}
+  .wp-n{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .wp-c{font-size:9.5px;color:#4f657a;margin-top:1px;font-variant-numeric:tabular-nums}
+  .wp-d{width:21px;height:21px;border:none;background:transparent;color:#3a4d5e;
+        cursor:pointer;border-radius:5px;font-size:12px;display:grid;place-items:center;transition:.15s}
+  .wp-d:hover{background:#7f1d1d;color:#fecaca}
+  .btns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .btn{padding:9px 7px;border-radius:8px;border:1px solid #1b2836;background:#101a23;
+       color:#8ba3b8;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;
+       transition:.15s}
+  .btn:hover{background:#14202b;border-color:#243748;color:#dbe6f0}
+  .btn:active{transform:translateY(1px)}
+  .btn.pri{grid-column:1/-1;background:linear-gradient(180deg,#0ea5e9,#0284c7);
+           border-color:#0ea5e9;color:#fff;box-shadow:0 4px 14px rgba(14,165,233,.26)}
+  .btn.pri:hover{background:linear-gradient(180deg,#38bdf8,#0ea5e9)}
+  .btn.pri.on{background:linear-gradient(180deg,#f59e0b,#d97706);border-color:#f59e0b}
+  .btn.act{background:#0b3a52;border-color:#0ea5e9;color:#7dd3fc}
+  .btn.dan{color:#f87171}
+  .btn.dan:hover{background:#341018;border-color:#7f1d1d;color:#fca5a5}
+  .btn.w{grid-column:1/-1}
+  .ac-row{display:flex;gap:6px;align-items:center;margin-bottom:7px}
+  .ac-row select{flex:1;margin-bottom:0}
+  .ac-dot{width:12px;height:12px;border-radius:50%;flex:none;border:1.5px solid rgba(255,255,255,.5)}
+  #stage{flex:1;position:relative;overflow:hidden;background:#050a10}
+  #cv{display:block;width:100%;height:100%;cursor:crosshair;touch-action:none}
+  #cv.hand{cursor:grab}
+  #cv.hand:active{cursor:grabbing}
+  #hud{position:absolute;top:12px;left:12px;display:flex;gap:7px;flex-wrap:wrap;
+       pointer-events:none;max-width:calc(100% - 24px)}
+  .hi{background:rgba(8,14,20,.84);backdrop-filter:blur(10px);
+      -webkit-backdrop-filter:blur(10px);
+      border:1px solid #16222e;border-radius:8px;padding:6px 11px;
+      display:flex;flex-direction:column;min-width:80px}
+  .hi span{font-size:9px;color:#4f657a;letter-spacing:.05em}
+  .hi b{font-size:12.5px;font-weight:700;color:#dbe6f0;white-space:nowrap;
+        font-variant-numeric:tabular-nums}
+  .hi.h b{color:#38bdf8}.hi.g b{color:#fbbf24}.hi.p b{color:#f472b6}
+  #tip{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+       background:rgba(8,14,20,.86);backdrop-filter:blur(10px);
+       -webkit-backdrop-filter:blur(10px);
+       border:1px solid #16222e;border-radius:20px;padding:7px 16px;
+       font-size:11.5px;color:#617a90;pointer-events:none;transition:opacity .6s;
+       white-space:nowrap;z-index:5}
+  #tip.hide{opacity:0}
+  #toast{position:absolute;bottom:64px;left:50%;transform:translate(-50%,10px);
+         background:#14202b;border:1px solid #243748;padding:8px 17px;border-radius:8px;
+         font-size:12px;opacity:0;transition:.25s;pointer-events:none;
+         white-space:nowrap;z-index:30;box-shadow:0 8px 28px rgba(0,0,0,.5)}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  #cockpit{position:absolute;left:14px;bottom:14px;z-index:10;width:380px;height:236px;
+           border-radius:12px;overflow:hidden;border:1px solid #243748;
+           box-shadow:0 12px 40px rgba(0,0,0,.75);background:#02060a;transition:.25s}
+  #cockpit.hidden{transform:translateY(24px) scale(.96);opacity:0;pointer-events:none}
+  #ckCv{display:block;width:100%;height:100%}
+  #ckX{position:absolute;top:7px;right:7px;width:22px;height:22px;border-radius:6px;
+       border:1px solid #243748;background:rgba(8,14,20,.8);color:#8ba3b8;
+       cursor:pointer;font-size:12px;line-height:1;display:grid;place-items:center;
+       transition:.15s;font-family:inherit}
+  #ckX:hover{background:#14202b;color:#dbe6f0}
+  #ckS{position:absolute;left:14px;bottom:14px;z-index:10;padding:8px 15px;
+       border-radius:9px;border:1px solid #243748;background:rgba(8,14,20,.88);
+       backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+       color:#8ba3b8;font-size:11.5px;font-weight:600;cursor:pointer;display:none;
+       font-family:inherit;transition:.15s}
+  #ckS:hover{background:#14202b;color:#dbe6f0}
+  #ckS.show{display:block}
+  @media (max-width:900px){
+    #cockpit{width:290px;height:180px}
+  }
+  @media (max-width:780px){
+    #app{flex-direction:column-reverse}
+    #panel{width:100%;height:46vh;border-right:none;border-top:1px solid #16222e}
+    #stage{height:54vh;flex:none}
+    #hud{top:8px;left:8px;gap:5px}
+    .hi{padding:4px 8px;min-width:62px}
+    .hi b{font-size:11px}.hi span{font-size:8px}
+    #tip{font-size:10.5px;padding:5px 12px;bottom:9px}
+    #cockpit{width:230px;height:144px;left:8px;bottom:8px}
+    #ckS{left:8px;bottom:8px}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="panel">
+    <div class="ph">
+      <div class="mark">✈</div>
+      <div><h1>AI蓝军</h1><p>模拟攻击</p></div>
+    </div>
+
+    <div class="sec">
+      <h2>飞机 <em id="acCount">1</em></h2>
+      <div class="ac-row">
+        <span class="ac-dot" id="acDot" style="background:#fbbf24"></span>
+        <select id="selAc"></select>
+      </div>
+      <label>飞机名称</label>
+      <div class="iw" style="margin-bottom:7px">
+        <input id="inAcName" type="text" value="飞机1" maxlength="20"
+               style="font-family:inherit;font-size:13px;font-weight:600">
+      </div>
+      <label>飞机型号</label>
+      <select id="selType">
+        <option value="f15">F-15 鹰</option>
+        <option value="f16">F-16 战隼</option>
+        <option value="f22">F-22 猛禽</option>
+        <option value="f35" selected>F-35 闪电II</option>
+        <option value="j20">歼-20 威龙</option>
+      </select>
+      <div class="btns">
+        <button class="btn" id="btnAddAc">＋ 添加飞机</button>
+        <button class="btn dan" id="btnDelAc">删除当前</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>飞行参数（当前飞机）</h2>
+      <label>巡航速度（设定值）</label>
+      <div class="iw"><input id="inSpeed" type="number" value="250" min="30" max="700" step="5"><span>m/s</span></div>
+      <label>巡航高度（设定值）</label>
+      <div class="iw"><input id="inAlt" type="number" value="10000" min="300" max="20000" step="100"><span>m</span></div>
+      <label>时间倍率</label>
+      <select id="selTime">
+        <option value="1">1× 实时</option>
+        <option value="10">10× 加速</option>
+        <option value="60">60× 加速</option>
+        <option value="300" selected>300× 加速</option>
+        <option value="1000">1000× 加速</option>
+        <option value="3000">3000× 加速</option>
+      </select>
+    </div>
+
+    <div class="sec grow">
+      <h2>航路点 <em id="wpCount">0</em></h2>
+      <div id="wpList" class="wp-list"></div>
+    </div>
+
+    <div class="sec">
+      <h2>编队保存</h2>
+      <select id="selSaved"><option value="">— 无已保存编队 —</option></select>
+      <div class="btns">
+        <button class="btn" id="btnLoad">载入</button>
+        <button class="btn" id="btnSave">💾 保存</button>
+        <button class="btn dan w" id="btnDel">删除选中</button>
+      </div>
+    </div>
+
+    <div class="sec" style="border-bottom:none">
+      <h2>飞行控制</h2>
+      <div class="btns">
+        <button id="btnStart" class="btn pri">▶ 当前飞机起飞</button>
+        <button id="btnAll" class="btn">▶ 全部起飞</button>
+        <button id="btnPause" class="btn">⏸ 全部暂停</button>
+        <button id="btnAdd" class="btn">✎ 添加航点中</button>
+        <button id="btnRoute" class="btn">👁 隐藏航路</button>
+        <button id="btnFit" class="btn">适应航线</button>
+        <button id="btnReset" class="btn">↺ 重置</button>
+        <button id="btnClear" class="btn dan">清空</button>
+        <button id="btnFollow" class="btn w act">🎯 自动跟随：开</button>
+        <button id="btnCk" class="btn w">🛩 隐藏驾驶舱</button>
+      </div>
+    </div>
+  </aside>
+
+  <main id="stage">
+    <canvas id="cv"></canvas>
+    <div id="hud">
+      <div class="hi"><span>呼号</span><b id="hName">飞机1</b></div>
+      <div class="hi"><span>实际速度</span><b id="hSpd">250 m/s</b></div>
+      <div class="hi"><span>实际高度</span><b id="hAlt">10,000 m</b></div>
+      <div class="hi h"><span>已飞</span><b id="hDist">0 km</b></div>
+      <div class="hi g"><span>进度</span><b id="hProg">0%</b></div>
+      <div class="hi p"><span>已用/总时</span><b id="hTime">00:00/00:00</b></div>
+    </div>
+    <div id="tip">单击地图添加航点 · 完成后点「添加航点中」结束 · 滚轮缩放至300×</div>
+    <div id="toast"></div>
+    <div id="cockpit"><canvas id="ckCv"></canvas><button id="ckX">✕</button></div>
+    <button id="ckS">🛩 显示驾驶舱</button>
+  </main>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ================= 基础 ================= */
+var WW=3600, WH=1800, KMD=111.32, UPD=WW/360, KMU=KMD/UPD, RKM=6371, D2R=Math.PI/180;
+var SKEY='cfp-v7', RKEY='cfr-v7';
+var HOME={lng:113.62,lat:34.75};
+var BND={minLng:66,maxLng:144,minLat:-4,maxLat:58};
+var COLORS=['#fbbf24','#38bdf8','#f472b6','#a3e635','#fb923c','#c084fc','#22d3ee','#f87171'];
+
+/* ================= 机型定义 ================= */
+var AC_TYPES=[
+  {id:'f15', name:'F-15 鹰',    span:1.30, nose:22, sweep:0.62, twin:true,  chengdu:false, delta:false},
+  {id:'f16', name:'F-16 战隼',  span:1.00, nose:20, sweep:0.72, twin:false, chengdu:false, delta:false},
+  {id:'f22', name:'F-22 猛禽',  span:1.18, nose:21, sweep:0.68, twin:true,  chengdu:false, delta:false},
+  {id:'f35', name:'F-35 闪电II',span:1.10, nose:20, sweep:0.66, twin:false, chengdu:false, delta:false},
+  {id:'j20', name:'歼-20 威龙', span:1.25, nose:23, sweep:0.75, twin:true,  chengdu:true,  delta:true}
+];
+function getAcType(id){
+  for(var i=0;i<AC_TYPES.length;i++) if(AC_TYPES[i].id===id) return AC_TYPES[i];
+  return AC_TYPES[3];
+}
+
+function $(s){return document.querySelector(s);}
+function clamp(v,a,b){return Math.min(b,Math.max(a,v));}
+function normLng(v){while(v>180)v-=360;while(v<-180)v+=360;return v;}
+function distKm(a,b){
+  var p1=a.lat*D2R,p2=b.lat*D2R,dp=p2-p1,dl=(b.lng-a.lng)*D2R;
+  var h=Math.sin(dp/2)*Math.sin(dp/2)+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)*Math.sin(dl/2);
+  return 2*RKM*Math.asin(Math.min(1,Math.sqrt(h)));
+}
+function fLat(v){return Math.abs(v).toFixed(2)+'°'+(v>=0?'N':'S');}
+function fLng(v){return Math.abs(v).toFixed(2)+'°'+(v>=0?'E':'W');}
+function fKm(v){return Math.round(v).toLocaleString('zh-CN')+' km';}
+function fDur(h){if(!isFinite(h)||h<=0)return'00:00';var m=Math.round(h*60);
+  return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
+var tt=null;
+function toast(m){var e=$('#toast');e.textContent=m;e.classList.add('show');
+  clearTimeout(tt);tt=setTimeout(function(){e.classList.remove('show');},1900);}
+function h1(n){var x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x);}
+function n1(x){var i=Math.floor(x),f=x-i,u=f*f*(3-2*f);return h1(i)*(1-u)+h1(i+1)*u;}
+function fbm(x,o){var v=0,a=0.5,f=1;for(var i=0;i<o;i++){v+=a*n1(x*f);f*=2;a*=0.5;}return v;}
+function hexA(hex,a){
+  var h=hex.replace('#','');
+  var r=parseInt(h.substring(0,2),16);
+  var g=parseInt(h.substring(2,4),16);
+  var b=parseInt(h.substring(4,6),16);
+  return 'rgba('+r+','+g+','+b+','+a+')';
+}
+
+/* ================= 地理数据 ================= */
+var MAIN=[[134.8,48.4],[134,47.3],[133.1,45.6],[131.3,45],[131.3,44],[130.6,42.9],
+  [131.2,42.9],[130.2,42.4],[128.1,42],[126.5,41.5],[124.4,40],[123.2,39.6],
+  [121.6,38.9],[121.3,39.6],[121,40.8],[119.5,40],[118,39.2],[117.6,38.4],
+  [118.9,38.1],[119,37.4],[120.7,37.8],[122.7,37.4],[121,36],[119.4,35.1],
+  [120.3,34],[121.8,32],[121.6,30.9],[122,29.9],[121.6,28.7],[120.5,27.5],
+  [119.6,26],[118.1,24.5],[116.7,23.4],[114.3,22.5],[113.5,22.2],[113,21.8],
+  [110.4,21.2],[109.9,21.5],[108.5,21.6],[107,21.5],[106.7,22.8],[105.3,23.3],
+  [104,22.5],[103,22.4],[101.7,22.4],[101.1,21.2],[99.9,22],[99,22.1],
+  [97.5,23.9],[98.7,25.9],[98.1,27.5],[96.3,29],[94,29.2],[92,27.8],
+  [89,27.3],[88.1,27.9],[85.8,28.2],[81,30.4],[79,32.4],[78.7,33.5],
+  [78,35.5],[76,35.8],[74.5,37],[74.9,38.5],[73.5,39.4],[75,40.5],
+  [76.8,41],[80.2,42.2],[80.5,43.2],[82.5,45.1],[83,47.2],[85.5,48],
+  [87.3,49.1],[90,47.8],[91,46],[95.5,44.3],[96.5,42.8],[100,42.6],
+  [105,41.8],[110,42.5],[111.5,43.5],[115,44.8],[117.5,46.6],[119.7,47],
+  [117.8,49.5],[120,53],[125.5,53.5],[127.5,50.2],[130.7,48.9],[133.5,48.3]];
+var ISL=[[[109.2,19.9],[110.6,20.1],[111,19.6],[110.5,18.7],[109.5,18.2],[108.7,19.3],[108.6,19.9]],
+  [[121,25.3],[122,25],[121.9,24],[120.9,22],[120.2,22.6],[120,23.5],[120.7,24.7]]];
+var MTS=[{n:'喜马拉雅',p:[[77,33],[80,31],[83,29.5],[86,28.5],[89,28.3],[92,28.5],[95,29.2],[97,29.8]]},
+  {n:'昆仑山',p:[[75,36.5],[80,36.2],[85,36],[90,36.2],[95,36.8],[100,37.5]]},
+  {n:'天山',p:[[75,42],[79,42.5],[83,43],[87,43.2],[90,42.8]]},
+  {n:'阿尔泰山',p:[[86,47],[88,47.8],[89.5,48.8],[91,49]]},
+  {n:'祁连山',p:[[95,38],[97,38.5],[100,38.8],[103,38.5]]},
+  {n:'秦岭',p:[[104,33.5],[107,33.8],[110,34],[112,33.8],[113.5,33.2]]},
+  {n:'太行山',p:[[113.5,35.2],[113.8,37],[114,38.5],[114.5,40]]},
+  {n:'大兴安岭',p:[[121,53],[122.5,50],[123.5,47],[124,45]]},
+  {n:'长白山',p:[[126,44],[127.5,42.5],[128.5,41.5]]},
+  {n:'武夷山',p:[[116.5,28],[117.2,26],[117.8,24.5]]},
+  {n:'南岭',p:[[110,25.5],[112,25],[114,24.8],[115.5,25]]},
+  {n:'横断山',p:[[99,32],[99.5,30],[100.5,28],[101.5,26]]}];
+var RV=[{n:'长江',p:[[91,33.5],[94,33],[97,32.5],[99,31],[100.5,29],[101.5,28],[102.5,28.2],
+    [104.5,28.6],[106.6,29.6],[108.5,30.4],[110,30.6],[112,30.4],[114.3,30.6],[116,29.7],
+    [117.5,30.5],[118.8,32.1],[120,31.9],[121.8,31.4]]},
+  {n:'黄河',p:[[96,35],[98,34.8],[100,34.9],[102,36],[103.8,36.1],[105,37],[105.8,37.6],
+    [106.5,38.5],[107,40.3],[108.5,40.6],[110,40.7],[110.5,39],[110.4,37],[110.3,35.8],
+    [110.5,34.8],[112,34.8],[113.6,34.8],[114.6,35.2],[116,35.8],[117.5,36.8],[119.1,37.8]]},
+  {n:'珠江',p:[[102.5,24],[104.5,23.5],[106.5,23.3],[108.5,23.1],[110.5,22.9],[112.5,23.1],[113.8,22.5]]},
+  {n:'黑龙江',p:[[121,53.3],[123,53.4],[125.5,53.5],[127.5,50.2],[130.7,48.9],[134,48.4]]},
+  {n:'松花江',p:[[124,45],[126.5,45.8],[127.5,45.5],[130.5,46.5],[132.5,48]]},
+  {n:'淮河',p:[[113.5,33.5],[115,33.2],[116.5,33],[117.5,32.9],[119.5,33.2]]},
+  {n:'雅鲁藏布江',p:[[82,30.3],[86,29.3],[90,29.2],[93,29.4],[95,29.7],[95.3,29]]},
+  {n:'澜沧江',p:[[94,33],[97,29],[100,25],[100.8,21.5]]},
+  {n:'汉江',p:[[105,33.5],[109,32.8],[111.5,32.2],[112.8,30.8]]},
+  {n:'湘江',p:[[110,26],[112.5,27.5],[113.2,29.5]]},
+  {n:'赣江',p:[[114.5,25.5],[115.3,27.5],[116,29.2]]}];
+var LKS=[['青海湖',100.2,36.9,0.55,0.32],['鄱阳湖',116.3,29.1,0.35,0.55],
+  ['洞庭湖',112.9,29.3,0.4,0.42],['太湖',120.2,31.2,0.3,0.22],['洪泽湖',118.6,33.3,0.28,0.22],
+  ['呼伦湖',117.5,48.9,0.35,0.24],['纳木错',90.6,30.7,0.3,0.18],['洱海',100.2,25.8,0.2,0.08]];
+
+var CITY=[
+  ['北京',116.41,39.9,1],['天津',117.2,39.13,1],['上海',121.47,31.23,1],['重庆',106.55,29.56,1],
+  ['石家庄',114.51,38.04,1],['唐山',118.18,39.63,3],['秦皇岛',119.6,39.94,3],['邯郸',114.49,36.61,3],
+  ['保定',115.48,38.87,3],['张家口',114.88,40.82,3],['承德',117.94,40.98,3],['沧州',116.86,38.3,3],
+  ['廊坊',116.68,39.54,3],['太原',112.55,37.87,1],['大同',113.3,40.08,3],['长治',113.12,36.19,3],
+  ['临汾',111.51,36.09,3],['运城',111,35.02,3],['呼和浩特',111.75,40.84,1],['包头',109.84,40.66,3],
+  ['赤峰',118.89,42.26,3],['鄂尔多斯',109.99,39.82,3],['沈阳',123.43,41.8,1],['大连',121.61,38.91,2],
+  ['鞍山',122.99,41.11,3],['抚顺',123.96,41.88,3],['锦州',121.13,41.1,3],['营口',122.24,40.67,3],
+  ['长春',125.32,43.82,1],['吉林',126.55,43.84,3],['四平',124.35,43.17,3],['通化',125.94,41.73,3],
+  ['哈尔滨',126.53,45.8,1],['齐齐哈尔',123.92,47.35,3],['大庆',125.03,46.59,3],['牡丹江',129.63,44.55,3],
+  ['南京',118.78,32.06,1],['无锡',120.3,31.57,3],['徐州',117.18,34.26,3],['苏州',120.58,31.3,2],
+  ['南通',120.86,32.01,3],['连云港',119.16,34.6,3],['杭州',120.15,30.27,1],['宁波',121.55,29.87,2],
+  ['温州',120.66,28,3],['嘉兴',120.76,30.75,3],['绍兴',120.58,30,3],['金华',119.65,29.09,3],
+  ['合肥',117.28,31.86,1],['芜湖',118.38,31.33,3],['蚌埠',117.36,32.94,3],['安庆',117.06,30.52,3],
+  ['福州',119.3,26.08,1],['厦门',118.09,24.48,2],['泉州',118.59,24.9,3],['漳州',117.65,24.51,3],
+  ['南昌',115.89,28.68,1],['景德镇',117.18,29.27,3],['九江',116,29.71,3],['赣州',114.94,25.85,3],
+  ['济南',117,36.65,1],['青岛',120.38,36.07,2],['淄博',118.05,36.81,3],['烟台',121.39,37.54,3],
+  ['潍坊',119.1,36.71,3],['济宁',116.59,35.41,3],['临沂',118.35,35.1,3],['郑州',113.62,34.75,1],
+  ['开封',114.31,34.8,3],['洛阳',112.45,34.62,3],['新乡',113.88,35.3,3],['南阳',112.53,32.99,3],
+  ['商丘',115.65,34.44,3],['信阳',114.09,32.15,3],['武汉',114.31,30.6,1],['宜昌',111.29,30.7,3],
+  ['襄阳',112.14,32.04,3],['荆州',112.24,30.33,3],['长沙',112.94,28.23,1],['株洲',113.13,27.83,3],
+  ['衡阳',112.61,26.89,3],['岳阳',113.13,29.36,3],['常德',111.7,29.03,3],['广州',113.26,23.13,1],
+  ['深圳',114.06,22.54,2],['珠海',113.55,22.27,3],['汕头',116.68,23.35,3],['佛山',113.12,23.02,3],
+  ['湛江',110.36,21.27,3],['东莞',113.75,23.02,3],['南宁',108.37,22.82,1],['柳州',109.42,24.33,3],
+  ['桂林',110.29,25.27,3],['北海',109.12,21.48,3],['海口',110.2,20.04,1],['三亚',109.51,18.25,3],
+  ['成都',104.07,30.57,1],['绵阳',104.68,31.47,3],['宜宾',104.63,28.77,3],['南充',106.08,30.8,3],
+  ['贵阳',106.63,26.65,1],['遵义',106.93,27.73,3],['昆明',102.83,24.88,1],['曲靖',103.8,25.49,3],
+  ['大理',100.23,25.59,3],['丽江',100.23,26.86,3],['拉萨',91.14,29.65,1],['日喀则',88.88,29.27,3],
+  ['西安',108.94,34.34,1],['宝鸡',107.14,34.37,3],['咸阳',108.71,34.33,3],['汉中',107.03,33.08,3],
+  ['兰州',103.82,36.06,1],['天水',105.72,34.58,3],['酒泉',98.49,39.73,3],['西宁',101.78,36.62,1],
+  ['格尔木',94.9,36.4,3],['银川',106.23,38.49,1],['石嘴山',106.38,39.02,3],['乌鲁木齐',87.62,43.79,1],
+  ['克拉玛依',84.89,45.58,3],['吐鲁番',89.19,42.95,3],['哈密',93.51,42.83,3],['喀什',75.99,39.47,3],
+  ['伊宁',81.32,43.92,3],['台北',121.56,25.03,1],['高雄',120.31,22.62,3],['台中',120.68,24.14,3],
+  ['香港',114.17,22.32,2],['澳门',113.55,22.2,3]
+];
+
+/* 乡镇 */
+var VILL=(function(){
+  var s0=['张','王','李','赵','刘','陈','杨','黄','周','吴','徐','孙','马','朱','胡','郭','何','林','罗','高'];
+  var s1=['村','庄','屯','沟','湾','寨','铺','集','营','甸','洼','峪','堡','塘','桥','岭'];
+  var out=[],s=42;
+  var rnd=function(){s=(s*9301+49297)%233280;return s/233280;};
+  for(var c=0;c<CITY.length;c++){
+    var n=5+Math.floor(rnd()*4);
+    for(var i=0;i<n;i++){
+      var ang=rnd()*Math.PI*2;
+      var r=0.10+rnd()*0.55;
+      out.push({
+        lng:CITY[c][1]+Math.cos(ang)*r,
+        lat:CITY[c][2]+Math.sin(ang)*r*0.85,
+        sz:0.7+rnd()*0.7,
+        name:s0[Math.floor(rnd()*s0.length)]+s1[Math.floor(rnd()*s1.length)]
+      });
+    }
+  }
+  return out;
+})();
+
+/* ================= 状态 ================= */
+var uid=1;
+var aircraftList=[];
+var activeIdx=0;
+var timeState={timeScale:300};
+
+function createAircraft(name,index,type){
+  var idx=(typeof index==='number')?index:0;
+  return {
+    id:'ac'+(uid++),
+    name:name||('飞机'+(idx+1)),
+    color:COLORS[idx%COLORS.length],
+    type:type||'f35',
+    waypoints:[],
+    speed:250,
+    altitude:10000,
+    actualSpeed:250,
+    actualAlt:10000,
+    flight:{playing:false,finished:false,leg:0,t:0},
+    rndT:Math.random()*100
+  };
+}
+/* 初始化：现在 aircraftList 已声明，createAircraft 内部不再引用它 */
+aircraftList=[createAircraft('飞机1',0,'f35')];
+
+function ac(){return aircraftList[activeIdx];}
+
+var ui={addMode:true,routeVisible:true,cockpitVisible:true,follow:true};
+
+var view={scale:1,x:0,y:0};
+var MIN_SCALE=0.25,MAX_SCALE=300;
+
+/* ================= 投影 ================= */
+function project(lng,lat){return [(lng+180)/360*WW,(90-lat)/180*WH];}
+function unproject(x,y){return [x/WW*360-180,90-y/WH*180];}
+function llToScreen(lng,lat){var p=project(lng,lat);
+  return [p[0]*view.scale+view.x,p[1]*view.scale+view.y];}
+function screenToLL(sx,sy){return unproject((sx-view.x)/view.scale,(sy-view.y)/view.scale);}
+
+/* ================= 画布 ================= */
+var canvas=$('#cv'),ctx=canvas.getContext('2d');
+var W=0,H=0,dpr=1;
+
+function resizeCanvas(){
+  var r=canvas.parentElement.getBoundingClientRect();
+  W=Math.max(1,r.width);H=Math.max(1,r.height);
+  dpr=Math.min(window.devicePixelRatio||1,2);
+  canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);
+  canvas.style.width=W+'px';canvas.style.height=H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+
+function clampView(){
+  var tl=project(BND.minLng,BND.maxLat);
+  var br=project(BND.maxLng,BND.minLat);
+  var bw=(br[0]-tl[0])*view.scale,bh=(br[1]-tl[1])*view.scale;
+  if(bw<=W) view.x=W/2-(tl[0]+br[0])/2*view.scale;
+  else view.x=clamp(view.x,W-br[0]*view.scale,-tl[0]*view.scale);
+  if(bh<=H) view.y=H/2-(tl[1]+br[1])/2*view.scale;
+  else view.y=clamp(view.y,H-br[1]*view.scale,-tl[1]*view.scale);
+}
+
+function initView(){
+  var tl=project(BND.minLng,BND.maxLat);
+  var br=project(BND.maxLng,BND.minLat);
+  var bw=br[0]-tl[0],bh=br[1]-tl[1];
+  var pad=24;
+  var s=Math.min((W-pad*2)/bw,(H-pad*2)/bh);
+  view.scale=clamp(s*1.28,MIN_SCALE,MAX_SCALE);
+  var c=project(HOME.lng,HOME.lat);
+  view.x=W/2-c[0]*view.scale;
+  view.y=H/2-c[1]*view.scale;
+  clampView();
+}
+
+function fitRoute(){
+  var wps=ac().waypoints;
+  if(!wps.length){initView();return;}
+  if(wps.length===1){
+    view.scale=10;
+    var p=project(wps[0].lng,wps[0].lat);
+    view.x=W/2-p[0]*view.scale;view.y=H/2-p[1]*view.scale;
+    clampView();return;
+  }
+  var minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+  for(var i=0;i<wps.length;i++){
+    var p=project(wps[i].lng,wps[i].lat);
+    if(p[0]<minX)minX=p[0];if(p[0]>maxX)maxX=p[0];
+    if(p[1]<minY)minY=p[1];if(p[1]>maxY)maxY=p[1];
+  }
+  var pad=Math.min(W,H)*0.16+40;
+  var bw=Math.max(maxX-minX,1e-4),bh=Math.max(maxY-minY,1e-4);
+  view.scale=clamp(Math.min((W-pad*2)/bw,(H-pad*2)/bh),MIN_SCALE,MAX_SCALE);
+  view.x=W/2-(minX+maxX)/2*view.scale;
+  view.y=H/2-(minY+maxY)/2*view.scale;
+  clampView();
+}
+
+/* ================= 距离/时间 ================= */
+function totalKmFor(a){
+  var wps=a.waypoints,d=0;
+  for(var i=0;i<wps.length-1;i++) d+=distKm(wps[i],wps[i+1]);
+  return d;
+}
+function flownKmFor(a){
+  var wps=a.waypoints;
+  if(wps.length<2) return 0;
+  var d=0;
+  var end=Math.min(a.flight.leg,wps.length-1);
+  for(var i=0;i<end;i++) d+=distKm(wps[i],wps[i+1]);
+  if(a.flight.leg<wps.length-1)
+    d+=distKm(wps[a.flight.leg],wps[a.flight.leg+1])*a.flight.t;
+  return d;
+}
+
+/* ================= 实际速度/高度 ================= */
+function updateActuals(a,dt){
+  // 未飞行：实际值等于设定值，不波动
+  if(!a.flight.playing){
+    a.actualSpeed=a.speed;
+    a.actualAlt=a.altitude;
+    return;
+  }
+  a.rndT+=dt;
+  var t=a.rndT;
+  var ns=Math.sin(t*0.31+1.3)*0.50+Math.sin(t*0.73+2.7)*0.30+Math.sin(t*1.67+4.1)*0.20;
+  a.actualSpeed=Math.max(10,a.speed+ns*30);
+  var na=Math.sin(t*0.23+5.2)*0.50+Math.sin(t*0.61+7.8)*0.30+Math.sin(t*1.31+2.4)*0.20;
+  a.actualAlt=Math.max(100,a.altitude+na*40);
+}
+
+/* ================= 飞行推进 ================= */
+function advanceFor(a,dt){
+  var wps=a.waypoints;
+  if(wps.length<2){a.flight.playing=false;return;}
+  var budget=(a.actualSpeed/1000)/KMU*dt*timeState.timeScale;
+  var guard=0;
+  while(budget>0&&guard++<600){
+    if(a.flight.leg>=wps.length-1) break;
+    var p1=project(wps[a.flight.leg].lng,wps[a.flight.leg].lat);
+    var p2=project(wps[a.flight.leg+1].lng,wps[a.flight.leg+1].lat);
+    var len=Math.hypot(p2[0]-p1[0],p2[1]-p1[1]);
+    if(len<1e-7){a.flight.leg++;a.flight.t=0;continue;}
+    var remain=len*(1-a.flight.t);
+    if(budget>=remain){budget-=remain;a.flight.leg++;a.flight.t=0;}
+    else{a.flight.t+=budget/len;budget=0;}
+  }
+  if(a.flight.leg>=wps.length-1){
+    a.flight.leg=wps.length-1;a.flight.t=1;
+    a.flight.finished=true;a.flight.playing=false;
+    a.actualSpeed=a.speed;a.actualAlt=a.altitude;
+    if(a===ac()){updateStartBtn();toast(a.name+' 已到达目的地');}
+    renderAcSelect();
+  }
+}
+
+function aircraftPosFor(a){
+  var wps=a.waypoints;
+  if(!wps.length) return null;
+  if(wps.length===1){
+    var p=project(wps[0].lng,wps[0].lat);
+    return {wx:p[0],wy:p[1],heading:-Math.PI/2,lng:wps[0].lng,lat:wps[0].lat};
+  }
+  var i=clamp(a.flight.leg,0,wps.length-2);
+  var t=a.flight.t;
+  if(a.flight.leg>=wps.length-1){i=wps.length-2;t=1;}
+  var p1=project(wps[i].lng,wps[i].lat);
+  var p2=project(wps[i+1].lng,wps[i+1].lat);
+  return {
+    wx:p1[0]+(p2[0]-p1[0])*t,
+    wy:p1[1]+(p2[1]-p1[1])*t,
+    heading:Math.atan2(p2[1]-p1[1],p2[0]-p1[0]),
+    lng:wps[i].lng+(wps[i+1].lng-wps[i].lng)*t,
+    lat:wps[i].lat+(wps[i+1].lat-wps[i].lat)*t
+  };
+}
+
+function followAircraft(dt){
+  if(!ui.follow) return;
+  var a=ac();
+  if(!a.flight.playing) return;
+  var ap=aircraftPosFor(a);
+  if(!ap) return;
+  var sx=ap.wx*view.scale+view.x;
+  var sy=ap.wy*view.scale+view.y;
+  var cx=W/2,cy=H/2;
+  var dx=cx-sx,dy=cy-sy;
+  var dist=Math.hypot(dx,dy);
+  var safeR=Math.min(W,H)*0.30;
+  if(dist>safeR){
+    var strength=Math.min(1,(dist-safeR)/(safeR*0.85));
+    var k=Math.min(1,dt*2.8)*strength;
+    view.x+=dx*k;view.y+=dy*k;
+    clampView();
+  }
+}
+
+/* ================= 绘制 ================= */
+function gridStep(){
+  var steps=[0.005,0.01,0.02,0.05,0.1,0.2,0.5,1,2,5,10,20];
+  var degPerPx=(360/WW)/view.scale;
+  var target=34*degPerPx;
+  for(var i=0;i<steps.length;i++) if(steps[i]>=target) return steps[i];
+  return 20;
+}
+
+function drawBackground(){
+  var g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#050b12');g.addColorStop(0.55,'#071119');g.addColorStop(1,'#040a10');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+}
+
+function drawGrid(){
+  var step=gridStep();
+  ctx.save();
+  ctx.lineWidth=1;
+  ctx.strokeStyle='rgba(56,189,248,0.075)';
+  ctx.beginPath();
+  var startLng=Math.floor(BND.minLng/step)*step;
+  for(var lng=startLng;lng<=BND.maxLng+step;lng+=step){
+    var x=llToScreen(lng,0)[0];
+    if(x<-10||x>W+10) continue;
+    ctx.moveTo(x,0);ctx.lineTo(x,H);
+  }
+  var startLat=Math.floor(BND.minLat/step)*step;
+  for(var lat=startLat;lat<=BND.maxLat+step;lat+=step){
+    var y=llToScreen(0,lat)[1];
+    if(y<-10||y>H+10) continue;
+    ctx.moveTo(0,y);ctx.lineTo(W,y);
+  }
+  ctx.stroke();
+
+  if(view.scale>4){
+    var sub=step/5;
+    ctx.strokeStyle='rgba(56,189,248,0.032)';
+    ctx.beginPath();
+    var s0=Math.floor(BND.minLng/sub)*sub;
+    for(var lng2=s0;lng2<=BND.maxLng+sub;lng2+=sub){
+      var x2=llToScreen(lng2,0)[0];
+      if(x2<-10||x2>W+10) continue;
+      ctx.moveTo(x2,0);ctx.lineTo(x2,H);
+    }
+    var t0=Math.floor(BND.minLat/sub)*sub;
+    for(var lat2=t0;lat2<=BND.maxLat+sub;lat2+=sub){
+      var y2=llToScreen(0,lat2)[1];
+      if(y2<-10||y2>H+10) continue;
+      ctx.moveTo(0,y2);ctx.lineTo(W,y2);
+    }
+    ctx.stroke();
+  }
+
+  if(view.scale>2){
+    ctx.fillStyle='rgba(90,120,145,0.75)';
+    ctx.font='9px ui-monospace,monospace';
+    ctx.textAlign='left';ctx.textBaseline='top';
+    var s0b=Math.floor(BND.minLng/step)*step;
+    for(var lng3=s0b;lng3<=BND.maxLng+step;lng3+=step){
+      var x3=llToScreen(lng3,0)[0];
+      if(x3<18||x3>W-30) continue;
+      ctx.fillText(lng3.toFixed(step<0.1?2:step<1?1:0)+'°',x3+3,3);
+    }
+    for(var lat3=startLat;lat3<=BND.maxLat+step;lat3+=step){
+      var y3=llToScreen(0,lat3)[1];
+      if(y3<14||y3>H-8) continue;
+      ctx.fillText(lat3.toFixed(step<0.1?2:step<1?1:0)+'°',3,y3+2);
+    }
+  }
+  ctx.restore();
+}
+
+function drawLand(){
+  ctx.beginPath();
+  for(var i=0;i<MAIN.length;i++){
+    var p=llToScreen(MAIN[i][0],MAIN[i][1]);
+    if(i===0) ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]);
+  }
+  ctx.closePath();
+  for(var k=0;k<ISL.length;k++){
+    var isl=ISL[k];
+    for(var j=0;j<isl.length;j++){
+      var p2=llToScreen(isl[j][0],isl[j][1]);
+      if(j===0) ctx.moveTo(p2[0],p2[1]); else ctx.lineTo(p2[0],p2[1]);
+    }
+    ctx.closePath();
+  }
+  var lg=ctx.createLinearGradient(0,0,0,H);
+  lg.addColorStop(0,'#142230');lg.addColorStop(1,'#0f1b26');
+  ctx.fillStyle=lg;
+  ctx.fill('evenodd');
+  ctx.strokeStyle=view.scale>8?'#3d5f7d':'#2f4a61';
+  ctx.lineWidth=view.scale>8?1.8:1.2;
+  ctx.lineJoin='round';
+  ctx.stroke();
+}
+
+function drawMountains(){
+  if(view.scale<1.0) return;
+  for(var mi=0;mi<MTS.length;mi++){
+    var m=MTS[mi];
+    ctx.beginPath();
+    for(var i=0;i<m.p.length;i++){
+      var p=llToScreen(m.p[i][0],m.p[i][1]);
+      if(i===0) ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]);
+    }
+    ctx.strokeStyle='rgba(96,118,138,0.32)';
+    ctx.lineWidth=clamp(view.scale*0.32,1.2,5);
+    ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.stroke();
+
+    if(view.scale>8){
+      for(var i2=0;i2<m.p.length-1;i2++){
+        var a=llToScreen(m.p[i2][0],m.p[i2][1]);
+        var b=llToScreen(m.p[i2+1][0],m.p[i2+1][1]);
+        var segLen=Math.hypot(b[0]-a[0],b[1]-a[1]);
+        if(segLen<18) continue;
+        var n=Math.min(28,Math.floor(segLen/18));
+        for(var jj=0;jj<n;jj++){
+          var t=(jj+0.5)/n;
+          var x=a[0]+(b[0]-a[0])*t;
+          var y=a[1]+(b[1]-a[1])*t;
+          var hh=5+h1(i2*31+jj*17)*9;
+          ctx.beginPath();
+          ctx.moveTo(x-5,y);ctx.lineTo(x,y-hh);ctx.lineTo(x+5,y);
+          ctx.closePath();
+          ctx.fillStyle='rgba(130,150,170,0.4)';
+          ctx.fill();
+        }
+      }
+    }
+
+    if(view.scale>4.2){
+      var mid=m.p[Math.floor(m.p.length/2)];
+      var pm=llToScreen(mid[0],mid[1]);
+      if(pm[0]>20&&pm[0]<W-60&&pm[1]>20&&pm[1]<H-20){
+        ctx.font='600 10px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+        ctx.fillStyle='rgba(150,170,190,0.72)';
+        ctx.textAlign='left';ctx.textBaseline='middle';
+        ctx.fillText(m.n,pm[0]+6,pm[1]-12);
+      }
+    }
+  }
+}
+
+function drawRivers(){
+  if(view.scale<0.4) return;
+  ctx.save();
+  ctx.strokeStyle='rgba(56,140,200,0.48)';
+  ctx.lineWidth=clamp(view.scale*0.14,1.0,3.2);
+  ctx.lineJoin='round';ctx.lineCap='round';
+  for(var ri=0;ri<RV.length;ri++){
+    var r=RV[ri];
+    ctx.beginPath();
+    for(var i=0;i<r.p.length;i++){
+      var p=llToScreen(r.p[i][0],r.p[i][1]);
+      if(i===0) ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  if(view.scale>5){
+    ctx.font='500 10px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillStyle='rgba(110,175,220,0.72)';
+    ctx.textAlign='left';ctx.textBaseline='middle';
+    for(var ri2=0;ri2<RV.length;ri2++){
+      var r2=RV[ri2];
+      var mid=r2.p[Math.floor(r2.p.length/2)];
+      var p2=llToScreen(mid[0],mid[1]);
+      if(p2[0]>20&&p2[0]<W-60&&p2[1]>20&&p2[1]<H-20){
+        ctx.fillText(r2.n,p2[0]+5,p2[1]+8);
+      }
+    }
+  }
+}
+
+function drawLakes(){
+  if(view.scale<1.2) return;
+  ctx.save();
+  for(var i=0;i<LKS.length;i++){
+    var lk=LKS[i];
+    var c=llToScreen(lk[1],lk[2]);
+    var rx=lk[3]*UPD*view.scale;
+    var ry=lk[4]*UPD*view.scale;
+    ctx.beginPath();
+    ctx.ellipse(c[0],c[1],rx,ry,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(56,140,200,0.35)';
+    ctx.fill();
+    ctx.strokeStyle='rgba(80,160,220,0.55)';
+    ctx.lineWidth=1;
+    ctx.stroke();
+    if(view.scale>6){
+      ctx.font='500 9.5px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+      ctx.fillStyle='rgba(120,180,220,0.8)';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(lk[0],c[0],c[1]-ry-8);
+    }
+  }
+  ctx.restore();
+}
+
+function drawVillages(){
+  var s=view.scale;
+  if(s<10) return;
+  var dotAlpha=Math.min(1,(s-10)/6);
+  var showNames=s>22;
+
+  ctx.save();
+  ctx.fillStyle='rgba(185,195,205,'+(0.45*dotAlpha)+')';
+  for(var i=0;i<VILL.length;i++){
+    var v=VILL[i];
+    var p=llToScreen(v.lng,v.lat);
+    if(p[0]<-4||p[0]>W+4||p[1]<-4||p[1]>H+4) continue;
+    var sz=clamp(v.sz*s*0.05,0.9,2.2);
+    ctx.beginPath();ctx.arc(p[0],p[1],sz,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+
+  if(!showNames) return;
+  var nameAlpha=Math.min(1,(s-22)/10);
+  ctx.save();
+  ctx.font='500 9px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.textAlign='left';ctx.textBaseline='middle';
+  var placed=[];
+  for(var j=0;j<VILL.length;j++){
+    var v2=VILL[j];
+    var p2=llToScreen(v2.lng,v2.lat);
+    if(p2[0]<-30||p2[0]>W+30||p2[1]<-14||p2[1]>H+14) continue;
+    var tw=ctx.measureText(v2.name).width;
+    var bx=p2[0]+5,by=p2[1]-5;
+    var box={x:bx-1,y:by-6,w:tw+2,h:12};
+    var hit=false;
+    for(var k=0;k<placed.length;k++){
+      var b=placed[k];
+      if(box.x<b.x+b.w&&box.x+box.w>b.x&&box.y<b.y+b.h&&box.y+box.h>b.y){hit=true;break;}
+    }
+    if(hit) continue;
+    placed.push(box);
+    ctx.fillStyle='rgba(4,10,16,'+(0.7*nameAlpha)+')';
+    ctx.fillText(v2.name,bx+0.7,by+0.7);
+    ctx.fillStyle='rgba(165,185,205,'+(0.85*nameAlpha)+')';
+    ctx.fillText(v2.name,bx,by);
+  }
+  ctx.restore();
+}
+
+function drawCities(){
+  var s=view.scale;
+  var showMinorDot=s>1.2, showTier2Dot=s>0.6;
+  var showMajorName=s>0.75, showTier2Name=s>2.2, showMinorName=s>5.0;
+
+  for(var i=0;i<CITY.length;i++){
+    var c=CITY[i];
+    var lvl=c[3];
+    if(lvl===3&&!showMinorDot) continue;
+    if(lvl===2&&!showTier2Dot) continue;
+    var p=llToScreen(c[1],c[2]);
+    if(p[0]<-40||p[0]>W+40||p[1]<-30||p[1]>H+30) continue;
+    if(lvl===1){
+      ctx.beginPath();
+      ctx.arc(p[0],p[1],clamp(4.2+s*0.22,5,9),0,Math.PI*2);
+      ctx.fillStyle='rgba(248,250,252,0.09)';ctx.fill();
+      ctx.beginPath();
+      ctx.arc(p[0],p[1],clamp(2.2+s*0.09,2.6,4.2),0,Math.PI*2);
+      ctx.fillStyle='#eef5fb';ctx.fill();
+    } else if(lvl===2){
+      ctx.beginPath();
+      ctx.arc(p[0],p[1],clamp(1.9+s*0.06,2.1,3.4),0,Math.PI*2);
+      ctx.fillStyle='#a8c9e0';ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(p[0],p[1],clamp(1.4+s*0.045,1.6,2.6),0,Math.PI*2);
+      ctx.fillStyle='#728ea3';ctx.fill();
+    }
+  }
+
+  var placed=[];
+  ctx.textAlign='left';ctx.textBaseline='middle';
+  for(var j=0;j<CITY.length;j++){
+    var c2=CITY[j];
+    var lvl2=c2[3];
+    if(lvl2===1?!showMajorName:lvl2===2?!showTier2Name:!showMinorName) continue;
+    var p2=llToScreen(c2[1],c2[2]);
+    if(p2[0]<-70||p2[0]>W+70||p2[1]<-24||p2[1]>H+24) continue;
+    ctx.font=lvl2===1
+      ?'700 11.5px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif'
+      :lvl2===2
+        ?'600 10.5px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif'
+        :'500 10px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    var tw=ctx.measureText(c2[0]).width;
+    var bx=p2[0]+(lvl2===1?8:6);
+    var by=p2[1]-(lvl2===1?9:8);
+    var box={x:bx-2,y:by-7.5,w:tw+4,h:15};
+    var hit=false;
+    for(var k=0;k<placed.length;k++){
+      var b=placed[k];
+      if(box.x<b.x+b.w&&box.x+box.w>b.x&&box.y<b.y+b.h&&box.y+box.h>b.y){hit=true;break;}
+    }
+    if(hit) continue;
+    placed.push(box);
+    ctx.fillStyle='rgba(4,10,16,0.75)';
+    ctx.fillText(c2[0],bx+0.9,by+0.9);
+    ctx.fillStyle=lvl2===1?'rgba(240,248,255,0.96)'
+                  :lvl2===2?'rgba(175,203,225,0.9)'
+                            :'rgba(148,175,196,0.84)';
+    ctx.fillText(c2[0],bx,by);
+  }
+}
+
+function drawAllRoutes(){
+  if(!ui.routeVisible) return;
+  for(var ai=0;ai<aircraftList.length;ai++){
+    var a=aircraftList[ai];
+    var wps=a.waypoints;
+    if(wps.length<2) continue;
+    var isActive=ai===activeIdx;
+    var alpha=isActive?1:0.42;
+
+    ctx.save();
+    ctx.beginPath();
+    for(var i=0;i<wps.length;i++){
+      var p=llToScreen(wps[i].lng,wps[i].lat);
+      if(i===0) ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]);
+    }
+    ctx.setLineDash([8,7]);
+    ctx.lineCap='round';
+    ctx.strokeStyle=hexA(a.color,0.26*alpha);
+    ctx.lineWidth=isActive?2:1.5;
+    ctx.stroke();
+    ctx.restore();
+
+    var hasProgress=a.flight.leg>0||a.flight.t>0||a.flight.finished;
+    if(!hasProgress) continue;
+
+    ctx.save();
+    ctx.beginPath();
+    var f=llToScreen(wps[0].lng,wps[0].lat);
+    ctx.moveTo(f[0],f[1]);
+    var end=Math.min(a.flight.leg,wps.length-1);
+    for(var i2=1;i2<=end;i2++){
+      var p2=llToScreen(wps[i2].lng,wps[i2].lat);
+      ctx.lineTo(p2[0],p2[1]);
+    }
+    if(a.flight.leg<wps.length-1){
+      var ap=aircraftPosFor(a);
+      if(ap) ctx.lineTo(ap.wx*view.scale+view.x,ap.wy*view.scale+view.y);
+    }
+    ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.shadowColor=hexA(a.color,0.75*alpha);
+    ctx.shadowBlur=12;
+    ctx.strokeStyle=hexA(a.color,alpha);
+    ctx.lineWidth=isActive?3:2;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawAllWaypoints(){
+  if(!ui.routeVisible) return;
+  for(var ai=0;ai<aircraftList.length;ai++){
+    var a=aircraftList[ai];
+    var isActive=ai===activeIdx;
+    var wps=a.waypoints;
+    for(var i=0;i<wps.length;i++){
+      var p=llToScreen(wps[i].lng,wps[i].lat);
+      if(p[0]<-60||p[0]>W+60||p[1]<-60||p[1]>H+60) continue;
+      var isCurrent=isActive&&(i===a.flight.leg&&!a.flight.finished);
+      ctx.beginPath();
+      ctx.arc(p[0],p[1],isCurrent?14:10,0,Math.PI*2);
+      ctx.fillStyle=hexA(a.color,isCurrent?0.16:0.09);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(p[0],p[1],isActive?7.5:6,0,Math.PI*2);
+      ctx.fillStyle='#08131c';ctx.fill();
+      ctx.strokeStyle=isCurrent?'#fbbf24':a.color;
+      ctx.lineWidth=isActive?2.2:1.6;
+      ctx.globalAlpha=isActive?1:0.65;
+      ctx.stroke();
+      ctx.globalAlpha=1;
+      if(isActive){
+        ctx.fillStyle='#04121c';
+        ctx.font='700 9px ui-sans-serif,system-ui,sans-serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(String(i+1),p[0],p[1]+0.5);
+      }
+    }
+  }
+}
+
+/* ---------- 参数化飞机轮廓 ---------- */
+function drawJetShape(c,type){
+  var sp=type.span,nz=type.nose,sw=type.sweep;
+  var twin=type.twin,delta=type.delta;
+  var wingTipY=9.0+sp*2.2;
+  var wingTipX=17.5*sp;
+
+  c.beginPath();
+  c.moveTo(0,-nz);
+  c.quadraticCurveTo(3.2,-nz*0.65,4.2,-nz*0.32);
+  c.lineTo(5.6,-nz*0.22);
+
+  if(delta){
+    c.lineTo(wingTipX,6.2);
+    c.lineTo(wingTipX*1.05,8.4);
+    c.lineTo(7.5,9.2);
+  } else {
+    c.lineTo(wingTipX,7.0-sw*0.5);
+    c.lineTo(wingTipX*1.06,wingTipY);
+    c.lineTo(7.0,9.8);
+  }
+
+  c.lineTo(6.0,11.2);
+
+  if(twin){
+    c.lineTo(9.0,14.8);
+    c.lineTo(5.2,15.3);
+    c.lineTo(3.6,13.0);
+  } else {
+    c.lineTo(8.2,14.6);
+    c.lineTo(3.6,13.0);
+  }
+
+  c.lineTo(3.0,16.4);
+  c.lineTo(0,17.0);
+  c.lineTo(-3.0,16.4);
+
+  if(twin){
+    c.lineTo(-3.6,13.0);
+    c.lineTo(-5.2,15.3);
+    c.lineTo(-9.0,14.8);
+  } else {
+    c.lineTo(-3.6,13.0);
+    c.lineTo(-8.2,14.6);
+  }
+
+  c.lineTo(-6.0,11.2);
+
+  if(delta){
+    c.lineTo(-7.5,9.2);
+    c.lineTo(-wingTipX*1.05,8.4);
+    c.lineTo(-wingTipX,6.2);
+  } else {
+    c.lineTo(-7.0,9.8);
+    c.lineTo(-wingTipX*1.06,wingTipY);
+    c.lineTo(-wingTipX,7.0-sw*0.5);
+  }
+
+  c.lineTo(-5.6,-nz*0.22);
+  c.lineTo(-4.2,-nz*0.32);
+  c.quadraticCurveTo(-3.2,-nz*0.65,0,-nz);
+  c.closePath();
+}
+
+function drawJetDetail(c,type,color){
+  var nz=type.nose;
+  c.beginPath();
+  c.ellipse(0,-nz*0.55,1.9,4.6,0,0,Math.PI*2);
+  c.fillStyle='#0e3a55';c.fill();
+  c.strokeStyle='rgba(186,230,253,0.75)';
+  c.lineWidth=0.7;c.stroke();
+
+  if(type.chengdu){
+    c.beginPath();
+    c.moveTo(3.8,-nz*0.28);c.lineTo(8.5,-nz*0.10);
+    c.lineTo(7.0,-nz*0.02);c.lineTo(3.6,-nz*0.16);
+    c.closePath();
+    c.moveTo(-3.8,-nz*0.28);c.lineTo(-8.5,-nz*0.10);
+    c.lineTo(-7.0,-nz*0.02);c.lineTo(-3.6,-nz*0.16);
+    c.closePath();
+    c.fillStyle='rgba(148,163,184,0.85)';
+    c.fill();
+    c.strokeStyle='rgba(226,232,240,0.6)';
+    c.lineWidth=0.5;c.stroke();
+  }
+
+  if(type.twin){
+    c.beginPath();
+    c.ellipse(-2.0,15.4,1.8,1.3,0,0,Math.PI*2);
+    c.ellipse(2.0,15.4,1.8,1.3,0,0,Math.PI*2);
+    c.fillStyle='#1e293b';c.fill();
+  } else {
+    c.beginPath();
+    c.ellipse(0,15.4,2.4,1.5,0,0,Math.PI*2);
+    c.fillStyle='#1e293b';c.fill();
+  }
+}
+
+function drawAircraftIcon(a,isActive){
+  var ap=aircraftPosFor(a);
+  if(!ap) return;
+  var sx=ap.wx*view.scale+view.x;
+  var sy=ap.wy*view.scale+view.y;
+  if(sx<-70||sx>W+70||sy<-70||sy>H+70) return;
+
+  ctx.save();
+  ctx.translate(sx,sy);
+
+  var g=ctx.createRadialGradient(0,0,0,0,0,32);
+  g.addColorStop(0,hexA(a.color,isActive?0.36:0.18));
+  g.addColorStop(0.5,hexA(a.color,isActive?0.10:0.05));
+  g.addColorStop(1,hexA(a.color,0));
+  ctx.fillStyle=g;
+  ctx.beginPath();ctx.arc(0,0,32,0,Math.PI*2);ctx.fill();
+
+  ctx.rotate(ap.heading+Math.PI/2);
+  var k=clamp(0.60+view.scale*0.02,0.60,0.92)*(isActive?1:0.88);
+  ctx.scale(k,k);
+
+  ctx.shadowColor='rgba(0,0,0,0.65)';
+  ctx.shadowBlur=8;ctx.shadowOffsetY=2;
+
+  var acType=getAcType(a.type);
+  drawJetShape(ctx,acType);
+
+  var lg=ctx.createLinearGradient(0,-20,0,18);
+  if(isActive){
+    lg.addColorStop(0,'#e8eef5');
+    lg.addColorStop(0.45,'#a8b6c4');
+    lg.addColorStop(1,'#6f7d8c');
+  } else {
+    lg.addColorStop(0,'#a8b6c4');
+    lg.addColorStop(1,'#59646f');
+  }
+  ctx.fillStyle=lg;ctx.fill();
+  ctx.strokeStyle=a.color;ctx.lineWidth=1.2;
+  ctx.lineJoin='round';ctx.stroke();
+
+  ctx.shadowColor='transparent';
+  drawJetDetail(ctx,acType,a.color);
+
+  ctx.restore();
+
+  if(aircraftList.length>1||isActive){
+    ctx.save();
+    ctx.font='600 10px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.textAlign='center';ctx.textBaseline='bottom';
+    ctx.fillStyle='rgba(4,10,16,0.78)';
+    ctx.fillText(a.name,sx+0.8,sy-20+0.8);
+    ctx.fillStyle=a.color;
+    ctx.fillText(a.name,sx,sy-20);
+    ctx.restore();
+  }
+}
+
+function drawAllAircraft(){
+  for(var i=0;i<aircraftList.length;i++){
+    if(i!==activeIdx) drawAircraftIcon(aircraftList[i],false);
+  }
+  if(aircraftList[activeIdx]) drawAircraftIcon(aircraftList[activeIdx],true);
+}
+
+function draw(){
+  drawBackground();
+  drawGrid();
+  drawLand();
+  drawMountains();
+  drawRivers();
+  drawLakes();
+  drawVillages();
+  drawCities();
+  drawAllRoutes();
+  drawAllWaypoints();
+  drawAllAircraft();
+}
+
+/* ================= 驾驶舱 ================= */
+var ckCanvas=$('#ckCv'),ckCtx=ckCanvas.getContext('2d');
+var CW=0,CH=0;
+
+function resizeCockpit(){
+  var r=ckCanvas.parentElement.getBoundingClientRect();
+  CW=Math.max(1,r.width);CH=Math.max(1,r.height);
+  ckCanvas.width=Math.round(CW*dpr);
+  ckCanvas.height=Math.round(CH*dpr);
+  ckCanvas.style.width=CW+'px';
+  ckCanvas.style.height=CH+'px';
+  ckCtx.setTransform(dpr,0,0,dpr,0,0);
+}
+
+var ck={heading:0,roll:0,pitch:0,fwd:0,phase:0,turb:0};
+
+var PEAKS=(function(){
+  var out=[];
+  for(var i=0;i<26;i++){
+    var az=i*(360/26);
+    out.push({az:((az%360)+360)%360,h:130+h1(i*7.3)*210,w:110+h1(i*3.1)*150});
+  }
+  return out;
+})();
+
+function shortestAngle(a){
+  while(a>Math.PI) a-=Math.PI*2;
+  while(a<-Math.PI) a+=Math.PI*2;
+  return a;
+}
+
+function drawCockpit(dt){
+  if(!ui.cockpitVisible) return;
+
+  var a=ac();
+  var alt=a.actualAlt;
+  var spd=a.actualSpeed;
+  var flying=a.flight.playing;
+
+  var ap=aircraftPosFor(a);
+  var targetHeading=ap?(ap.heading+Math.PI/2):ck.heading;
+  var hdDiff=shortestAngle(targetHeading-ck.heading);
+  var prevH=ck.heading;
+  ck.heading+=hdDiff*Math.min(1,dt*2.4);
+
+  var turnRate=shortestAngle(ck.heading-prevH)/Math.max(dt,0.001);
+  ck.phase+=dt*(flying?1:0.22);
+
+  var targetRoll=flying
+    ?clamp(-turnRate*180/Math.PI*0.55,-28,28)+Math.sin(ck.phase*0.65)*1.4
+    :Math.sin(ck.phase*0.28)*1.0;
+  ck.roll+=(targetRoll-ck.roll)*Math.min(1,dt*2.0);
+
+  var total=totalKmFor(a);
+  var prog=total>0.01?clamp(flownKmFor(a)/total,0,1):0;
+  var targetPitch=0;
+  if(flying){
+    if(prog<0.07) targetPitch=3.4*(1-prog/0.07);
+    else if(prog>0.93) targetPitch=-3.4*((prog-0.93)/0.07);
+    else targetPitch=Math.sin(ck.phase*0.43)*0.85;
+  }
+  ck.pitch+=(targetPitch-ck.pitch)*Math.min(1,dt*1.5);
+  ck.turb+=((Math.sin(ck.phase*4.1)*0.4+Math.sin(ck.phase*12.7)*0.22)-ck.turb)*Math.min(1,dt*5);
+
+  if(flying) ck.fwd+=(spd/250)*55*dt;
+  else ck.fwd+=4*dt;
+
+  var cx=CW/2;
+  var cy=CH*0.42;
+  var hzY=cy+ck.pitch*(CH*0.038)+ck.turb*1.6;
+
+  var focal=CH*0.88;
+  var camH=52;
+  var Z_NEAR=68,Z_FAR=4200,SPACING=34;
+
+  ckCtx.save();
+  ckCtx.translate(cx,cy);
+  ckCtx.rotate(ck.roll*D2R);
+  ckCtx.translate(-cx,-cy);
+
+  var skyTop=hzY-CH*1.6;
+  var skyG=ckCtx.createLinearGradient(0,skyTop,0,hzY);
+  skyG.addColorStop(0,'#04101f');
+  skyG.addColorStop(0.38,'#123d5c');
+  skyG.addColorStop(0.72,'#34739a');
+  skyG.addColorStop(1,'#89b6cb');
+  ckCtx.fillStyle=skyG;
+  ckCtx.fillRect(-CW,skyTop,CW*3,hzY-skyTop+2);
+
+  for(var layer=0;layer<3;layer++){
+    var ly=hzY-26-layer*20;
+    var alpha=0.09+layer*0.05;
+    var drift=ck.fwd*(0.16+layer*0.12);
+    ckCtx.globalAlpha=alpha;
+    ckCtx.fillStyle=layer===0?'#b6d2e2':'#6d9ab3';
+    for(var i=0;i<8;i++){
+      var n=fbm(i*1.71+drift*0.018,3);
+      var span=CW+340;
+      var x=((i*149-drift*(10+layer*6))%span+span)%span-170;
+      var w=64+n*116;
+      var h=7+n*13;
+      ckCtx.beginPath();
+      ckCtx.ellipse(x+w/2,ly,w/2,h,0,0,Math.PI*2);
+      ckCtx.fill();
+    }
+  }
+  ckCtx.globalAlpha=1;
+
+  var headingDeg=((ck.heading*180/Math.PI)%360+360)%360;
+  var visiblePeaks=[];
+  for(var pi=0;pi<PEAKS.length;pi++){
+    var p=PEAKS[pi];
+    var relAz=((p.az-headingDeg)%360+540)%360-180;
+    if(Math.abs(relAz)>62) continue;
+    if(Math.abs(relAz)<20) continue;
+    visiblePeaks.push({p:p,relAz:relAz});
+  }
+  visiblePeaks.sort(function(a2,b2){return a2.relAz-b2.relAz;});
+
+  if(visiblePeaks.length){
+    ckCtx.beginPath();
+    ckCtx.moveTo(-CW,hzY+6);
+    for(var vi=0;vi<visiblePeaks.length;vi++){
+      var vp=visiblePeaks[vi];
+      var t=Math.tan(vp.relAz*D2R)/Math.tan(62*D2R);
+      var sx=cx+t*CW*0.78;
+      var hPx=vp.p.h*(CH/900);
+      var wPx=vp.p.w*(CW/800)*0.5;
+      ckCtx.lineTo(sx-wPx,hzY+4);
+      ckCtx.lineTo(sx-wPx*0.42,hzY-hPx*0.62);
+      ckCtx.lineTo(sx,hzY-hPx);
+      ckCtx.lineTo(sx+wPx*0.46,hzY-hPx*0.68);
+      ckCtx.lineTo(sx+wPx,hzY+4);
+    }
+    ckCtx.lineTo(CW*2,hzY+6);
+    ckCtx.closePath();
+    ckCtx.fillStyle='rgba(36,58,78,0.82)';
+    ckCtx.fill();
+
+    ckCtx.beginPath();
+    ckCtx.moveTo(-CW,hzY+8);
+    for(var vi2=0;vi2<visiblePeaks.length;vi2++){
+      var vp2=visiblePeaks[vi2];
+      var t2=Math.tan(vp2.relAz*D2R)/Math.tan(62*D2R);
+      var sx2=cx+t2*CW*0.78;
+      var hPx2=vp2.p.h*(CH/900)*0.7;
+      var wPx2=vp2.p.w*(CW/800)*0.72;
+      ckCtx.lineTo(sx2-wPx2*0.5,hzY+6);
+      ckCtx.lineTo(sx2,hzY-hPx2);
+      ckCtx.lineTo(sx2+wPx2*0.5,hzY+6);
+    }
+    ckCtx.lineTo(CW*2,hzY+8);
+    ckCtx.closePath();
+    ckCtx.fillStyle='rgba(18,32,46,0.95)';
+    ckCtx.fill();
+  }
+
+  ckCtx.beginPath();
+  ckCtx.moveTo(-CW,hzY);
+  ckCtx.lineTo(CW*2,hzY);
+  ckCtx.strokeStyle='rgba(150,195,230,0.30)';
+  ckCtx.lineWidth=1;
+  ckCtx.stroke();
+
+  var grdG=ckCtx.createLinearGradient(0,hzY,0,CH*1.6);
+  grdG.addColorStop(0,'#414a38');
+  grdG.addColorStop(0.28,'#333d2c');
+  grdG.addColorStop(1,'#161b13');
+  ckCtx.fillStyle=grdG;
+  ckCtx.fillRect(-CW,hzY,CW*3,CH*2);
+
+  var kStart=Math.floor((ck.fwd+Z_NEAR)/SPACING);
+  var kEnd=Math.floor((ck.fwd+Z_FAR)/SPACING);
+  var strips=[];
+  for(var k=kStart;k<=kEnd;k++){
+    var dNear=k*SPACING-ck.fwd;
+    var dFar=dNear+SPACING;
+    if(dFar<Z_NEAR) continue;
+    if(dNear>Z_FAR) continue;
+    var dN=Math.max(dNear,Z_NEAR);
+    var dF=Math.min(dFar,Z_FAR);
+    var yN=hzY+focal*camH/dN;
+    var yF=hzY+focal*camH/dF;
+    if(yF>CH+20) continue;
+    if(yN<hzY-2) continue;
+    strips.push({yN:yN,yF:yF,k:k,dN:dN});
+  }
+  strips.sort(function(x,y){return x.yF-y.yF;});
+
+  for(var si=0;si<strips.length;si++){
+    var s=strips[si];
+    var n2=h1(s.k*0.173);
+    var depth=clamp(s.dN/700,0,1);
+    var shade=34+n2*52;
+    var r=(shade*0.94)|0;
+    var g=(shade*1.02)|0;
+    var b=(shade*0.66)|0;
+    ckCtx.fillStyle='rgb('+r+','+g+','+b+')';
+    ckCtx.fillRect(-CW,s.yF,CW*3,s.yN-s.yF+1);
+    if(n2>0.62&&depth<0.55){
+      var alpha2=0.30*(1-depth/0.55);
+      ckCtx.fillStyle='rgba(190,200,150,'+alpha2+')';
+      var px=(h1(s.k*2.7)*2-1)*CW*0.9;
+      var pw=22+h1(s.k*4.1)*70;
+      ckCtx.fillRect(px,s.yF,pw,s.yN-s.yF+1);
+    }
+  }
+
+  for(var ii=-7;ii<=7;ii++){
+    if(ii===0) continue;
+    var worldX=ii*78;
+    var dNearP=Math.max(Z_NEAR,80);
+    var dFarP=Z_FAR;
+    var xN=cx+focal*worldX/dNearP;
+    var xF=cx+focal*worldX/dFarP;
+    var yNp=hzY+focal*camH/dNearP;
+    var yFp=hzY+focal*camH/dFarP;
+    ckCtx.beginPath();
+    ckCtx.moveTo(xF,yFp);
+    ckCtx.lineTo(xN,yNp);
+    ckCtx.strokeStyle='rgba(150,160,120,0.16)';
+    ckCtx.lineWidth=clamp(1.2+Math.abs(ii)*0.25,1,3);
+    ckCtx.stroke();
+  }
+
+  var wHalf=26;
+  var dNearR=Math.max(Z_NEAR,70);
+  var dFarR=Z_FAR;
+  var xLN=cx+focal*(-wHalf)/dNearR;
+  var xRN=cx+focal*(wHalf)/dNearR;
+  var xLF=cx+focal*(-wHalf)/dFarR;
+  var xRF=cx+focal*(wHalf)/dFarR;
+  var yNR=hzY+focal*camH/dNearR;
+  var yFR=hzY+focal*camH/dFarR;
+  ckCtx.beginPath();
+  ckCtx.moveTo(xLF,yFR);
+  ckCtx.lineTo(xRF,yFR);
+  ckCtx.lineTo(xRN,yNR);
+  ckCtx.lineTo(xLN,yNR);
+  ckCtx.closePath();
+  ckCtx.fillStyle='rgba(96,98,86,0.42)';
+  ckCtx.fill();
+
+  ckCtx.restore();
+
+  if(flying){
+    var spdN=clamp((spd-60)/500,0.12,1);
+    ckCtx.save();
+    ckCtx.globalAlpha=0.34*spdN;
+    ckCtx.strokeStyle='rgba(200,230,255,0.85)';
+    ckCtx.lineCap='round';
+    var seed=Math.floor(ck.fwd*0.8);
+    for(var li=0;li<36;li++){
+      var a2=h1(li*17.3+seed*0.011)*Math.PI*2;
+      var r0=CH*(0.26+h1(li*31.7)*0.26);
+      var r1=r0+CH*(0.32+h1(li*53.1)*0.36)*spdN;
+      var x0=cx+Math.cos(a2)*r0;
+      var y0=cy+Math.sin(a2)*r0*0.85;
+      var x1=cx+Math.cos(a2)*r1;
+      var y1=cy+Math.sin(a2)*r1*0.85;
+      var len=Math.hypot(x1-x0,y1-y0);
+      ckCtx.lineWidth=clamp(len*0.011,0.6,2.2);
+      ckCtx.beginPath();
+      ckCtx.moveTo(x0,y0);
+      ckCtx.lineTo(x1,y1);
+      ckCtx.stroke();
+    }
+    ckCtx.restore();
+  }
+
+  ckCtx.save();
+  ckCtx.strokeStyle='rgba(90,255,170,0.78)';
+  ckCtx.fillStyle='rgba(90,255,170,0.92)';
+  ckCtx.lineWidth=1;
+
+  var speedBox={x:12,y:cy-34,w:46,h:68};
+  ckCtx.strokeRect(speedBox.x,speedBox.y,speedBox.w,speedBox.h);
+  ckCtx.font='700 12px ui-monospace,monospace';
+  ckCtx.textAlign='center';ckCtx.textBaseline='middle';
+  ckCtx.fillText(String(Math.round(spd)),speedBox.x+speedBox.w/2,cy);
+  ckCtx.font='7px ui-monospace,monospace';
+  ckCtx.fillText('m/s',speedBox.x+speedBox.w/2,cy+14);
+
+  var altBox={x:CW-58,y:cy-34,w:46,h:68};
+  ckCtx.strokeRect(altBox.x,altBox.y,altBox.w,altBox.h);
+  ckCtx.font='700 12px ui-monospace,monospace';
+  ckCtx.fillText(String(Math.round(alt)),altBox.x+altBox.w/2,cy);
+  ckCtx.font='7px ui-monospace,monospace';
+  ckCtx.fillText('m',altBox.x+altBox.w/2,cy+14);
+
+  ckCtx.save();
+  ckCtx.translate(cx,cy);
+  ckCtx.rotate(-ck.roll*D2R*0.55);
+  ckCtx.beginPath();
+  ckCtx.arc(0,0,10,0,Math.PI*2);
+  ckCtx.stroke();
+  ckCtx.beginPath();
+  ckCtx.moveTo(-18,0);ckCtx.lineTo(-11,0);
+  ckCtx.moveTo(11,0);ckCtx.lineTo(18,0);
+  ckCtx.moveTo(0,-18);ckCtx.lineTo(0,-11);
+  ckCtx.stroke();
+  ckCtx.restore();
+
+  ckCtx.strokeStyle='rgba(90,255,170,0.42)';
+  for(var pj=-3;pj<=3;pj++){
+    if(pj===0) continue;
+    var yy=cy+pj*13-ck.pitch*2.4;
+    var ww=pj%2===0?24:15;
+    ckCtx.beginPath();
+    ckCtx.moveTo(cx-ww,yy);ckCtx.lineTo(cx-9,yy);
+    ckCtx.moveTo(cx+9,yy);ckCtx.lineTo(cx+ww,yy);
+    ckCtx.stroke();
+  }
+
+  if(Math.abs(ck.roll)>2){
+    ckCtx.strokeStyle='rgba(251,191,36,0.85)';
+    ckCtx.fillStyle='rgba(251,191,36,0.95)';
+    ckCtx.font='700 9px ui-monospace,monospace';
+    ckCtx.textAlign='center';
+    ckCtx.fillText(Math.round(ck.roll)+'°',cx,CH-32);
+  }
+
+  ckCtx.strokeStyle='rgba(90,255,170,0.85)';
+  ckCtx.beginPath();
+  ckCtx.rect(cx-62,CH-24,124,17);
+  ckCtx.stroke();
+  var hdgDeg=((ck.heading*180/Math.PI)%360+360)%360;
+  ckCtx.fillStyle='rgba(90,255,170,0.95)';
+  ckCtx.font='700 10px ui-monospace,monospace';
+  ckCtx.textAlign='center';
+  ckCtx.fillText(String(Math.round(hdgDeg)).padStart(3,'0')+'°',cx,CH-15);
+
+  var wps=a.waypoints;
+  var curName=(a.flight.leg<wps.length-1&&wps[a.flight.leg+1])
+    ?wps[a.flight.leg+1].name:'—';
+  ckCtx.font='8px ui-monospace,monospace';
+  ckCtx.fillStyle='rgba(90,255,170,0.75)';
+  ckCtx.textAlign='left';
+  ckCtx.fillText('NEXT '+curName,12,CH-15);
+
+  ckCtx.restore();
+
+  ckCtx.save();
+  var vg=ckCtx.createRadialGradient(CW/2,CH/2,CH*0.25,CW/2,CH/2,CH*0.95);
+  vg.addColorStop(0,'rgba(0,0,0,0)');
+  vg.addColorStop(1,'rgba(0,0,0,0.68)');
+  ckCtx.fillStyle=vg;
+  ckCtx.fillRect(0,0,CW,CH);
+
+  ckCtx.fillStyle='#0f1419';
+  ckCtx.beginPath();
+  ckCtx.moveTo(0,0);
+  ckCtx.lineTo(CW,0);
+  ckCtx.lineTo(CW,CH*0.055);
+  ckCtx.quadraticCurveTo(CW*0.5,CH*0.125,0,CH*0.055);
+  ckCtx.closePath();
+  ckCtx.fill();
+
+  ckCtx.fillStyle='#0d1218';
+  ckCtx.beginPath();
+  ckCtx.moveTo(0,CH);
+  ckCtx.lineTo(CW,CH);
+  ckCtx.lineTo(CW,CH*0.89);
+  ckCtx.quadraticCurveTo(CW*0.5,CH*0.845,0,CH*0.89);
+  ckCtx.closePath();
+  ckCtx.fill();
+
+  ckCtx.fillStyle='#0a0f14';
+  ckCtx.beginPath();
+  ckCtx.moveTo(0,0);ckCtx.lineTo(0,CH);
+  ckCtx.lineTo(CW*0.05,CH*0.89);
+  ckCtx.lineTo(CW*0.05,CH*0.055);
+  ckCtx.closePath();
+  ckCtx.fill();
+  ckCtx.beginPath();
+  ckCtx.moveTo(CW,0);ckCtx.lineTo(CW,CH);
+  ckCtx.lineTo(CW*0.95,CH*0.89);
+  ckCtx.lineTo(CW*0.95,CH*0.055);
+  ckCtx.closePath();
+  ckCtx.fill();
+
+  var mw=CW*0.46,mh=CH*0.11,mx=CW/2-mw/2,my=CH*0.885;
+  ckCtx.fillStyle='#060e14';
+  ckCtx.fillRect(mx,my,mw,mh);
+  ckCtx.strokeStyle='rgba(90,255,170,0.5)';
+  ckCtx.lineWidth=1;
+  ckCtx.strokeRect(mx+0.5,my+0.5,mw-1,mh-1);
+
+  ckCtx.font='7px ui-monospace,monospace';
+  ckCtx.fillStyle='rgba(90,255,170,0.92)';
+  ckCtx.textAlign='center';ckCtx.textBaseline='middle';
+
+  var prog100=total>0.01?Math.round(clamp(flownKmFor(a)/total,0,1)*100):0;
+  ckCtx.fillText(a.name+'  NAV '+String(prog100).padStart(3,' ')+'%   '+curName,
+                 CW/2,my+mh*0.34);
+  ckCtx.fillText(
+    (flying?'FLYING':a.flight.finished?'ARRIVED':'READY')+
+    '   SPD '+Math.round(spd)+'m/s'+
+    '   ALT '+Math.round(alt)+'m'+
+    '   ROLL '+Math.round(ck.roll)+'°',
+    CW/2,my+mh*0.74);
+
+  var led=flying?'#22c55e':a.flight.finished?'#f59e0b':'#64748b';
+  ckCtx.beginPath();
+  ckCtx.arc(mx-10,my+mh/2,3,0,Math.PI*2);
+  ckCtx.fillStyle=led;
+  ckCtx.fill();
+
+  ckCtx.restore();
+}
+
+/* ================= HUD ================= */
+var hName=$('#hName'),hAlt=$('#hAlt'),hSpd=$('#hSpd');
+var hDist=$('#hDist'),hProg=$('#hProg'),hTime=$('#hTime');
+
+function updateHUD(){
+  var a=ac();
+  if(!a) return;
+  hName.textContent=a.name;
+  hSpd.textContent=Math.round(a.actualSpeed)+' m/s';
+  hAlt.textContent=Math.round(a.actualAlt).toLocaleString('zh-CN')+' m';
+
+  var flown=flownKmFor(a),total=totalKmFor(a);
+  hDist.textContent=fKm(flown);
+  hProg.textContent=total>0.01
+    ?Math.round(clamp(flown/total,0,1)*100)+'%':'0%';
+
+  var speedKmh=Math.max(a.actualSpeed*3.6,1);
+  hTime.textContent=fDur(flown/speedKmh)+' / '+fDur(total/speedKmh);
+}
+
+/* ================= 主循环 ================= */
+var lastT=0;
+function loop(t){
+  if(!lastT) lastT=t;
+  var dt=(t-lastT)/1000;
+  lastT=t;
+  dt=clamp(dt,0,0.06);
+
+  for(var i=0;i<aircraftList.length;i++){
+    var a=aircraftList[i];
+    updateActuals(a,dt);
+    if(a.flight.playing&&!a.flight.finished) advanceFor(a,dt);
+  }
+  followAircraft(dt);
+
+  draw();
+  drawCockpit(dt);
+  updateHUD();
+
+  requestAnimationFrame(loop);
+}
+
+/* ================= 航路点 ================= */
+function addWaypoint(lng,lat){
+  var a=ac();
+  if(a.flight.playing){toast('飞行中无法修改航线');return;}
+  lng=normLng(lng);
+  lat=clamp(lat,-85,85);
+  a.waypoints.push({id:'wp'+(uid++),name:'WP'+(a.waypoints.length+1),lng:lng,lat:lat});
+  if(a.flight.finished||a.flight.leg>0||a.flight.t>0) resetFlightFor(a);
+  renderWpList();
+  save();
+}
+
+function removeWaypoint(id){
+  var a=ac();
+  if(a.flight.playing){toast('飞行中无法修改航线');return;}
+  var i=-1;
+  for(var k=0;k<a.waypoints.length;k++) if(a.waypoints[k].id===id){i=k;break;}
+  if(i<0) return;
+  a.waypoints.splice(i,1);
+  for(var j=0;j<a.waypoints.length;j++) a.waypoints[j].name='WP'+(j+1);
+  resetFlightFor(a);
+  renderWpList();
+  save();
+}
+
+function clearAll(){
+  var a=ac();
+  if(a.flight.playing){toast('飞行中无法修改航线');return;}
+  if(!a.waypoints.length) return;
+  a.waypoints=[];
+  resetFlightFor(a);
+  renderWpList();
+  save();
+  toast('已清空 '+a.name+' 的航线');
+}
+
+function resetFlightFor(a){
+  a.flight.playing=false;
+  a.flight.finished=false;
+  a.flight.leg=0;
+  a.flight.t=0;
+  a.actualSpeed=a.speed;
+  a.actualAlt=a.altitude;
+  a.rndT=Math.random()*100;
+  if(a===ac()) updateStartBtn();
+  renderAcSelect();
+}
+
+/* ================= 列表 ================= */
+var wpListEl=$('#wpList'),wpCountEl=$('#wpCount');
+
+function renderWpList(){
+  var wps=ac().waypoints;
+  wpCountEl.textContent=wps.length;
+  if(!wps.length){
+    wpListEl.innerHTML='<div class="empty"><b>暂无航路点</b>单击地图即可添加</div>';
+    return;
+  }
+  var html='';
+  for(var i=0;i<wps.length;i++){
+    var w=wps[i];
+    html+='<div class="wp" data-id="'+w.id+'" data-lng="'+w.lng+'" data-lat="'+w.lat+'">'+
+      '<div class="wp-i">'+(i+1)+'</div>'+
+      '<div class="wp-t">'+
+        '<div class="wp-n">'+w.name+'</div>'+
+        '<div class="wp-c">'+fLat(w.lat)+' · '+fLng(w.lng)+'</div>'+
+      '</div>'+
+      '<button class="wp-d" data-del="'+w.id+'" title="删除">✕</button>'+
+    '</div>';
+  }
+  wpListEl.innerHTML=html;
+}
+
+wpListEl.addEventListener('click',function(e){
+  var del=e.target.closest('[data-del]');
+  if(del){e.stopPropagation();removeWaypoint(del.dataset.del);return;}
+  var item=e.target.closest('.wp');
+  if(!item) return;
+  var lng=parseFloat(item.dataset.lng),lat=parseFloat(item.dataset.lat);
+  var p=project(lng,lat);
+  view.x=W/2-p[0]*view.scale;
+  view.y=H/2-p[1]*view.scale;
+  clampView();
+});
+
+/* ================= 飞机列表 UI ================= */
+var selAc=$('#selAc'),acCount=$('#acCount'),acDot=$('#acDot');
+var inAcName=$('#inAcName'),selType=$('#selType');
+
+function renderAcSelect(){
+  acCount.textContent=aircraftList.length;
+  var html='';
+  for(var i=0;i<aircraftList.length;i++){
+    var a=aircraftList[i];
+    var badge=a.flight.playing?' ▶':a.flight.finished?' ✓':'';
+    html+='<option value="'+a.id+'">'+a.name+badge+' · '+a.waypoints.length+'点</option>';
+  }
+  selAc.innerHTML=html;
+  selAc.value=ac().id;
+  acDot.style.background=ac().color;
+}
+
+selAc.addEventListener('change',function(){
+  var idx=-1;
+  for(var i=0;i<aircraftList.length;i++) if(aircraftList[i].id===selAc.value){idx=i;break;}
+  if(idx>=0){
+    activeIdx=idx;
+    var a=ac();
+    inSpeed.value=a.speed;
+    inAlt.value=a.altitude;
+    inAcName.value=a.name;
+    selType.value=a.type||'f35';
+    acDot.style.background=a.color;
+    renderWpList();
+    updateStartBtn();
+    save();
+  }
+});
+
+/* 名称修改 */
+inAcName.addEventListener('input',function(){
+  var a=ac();
+  var v=inAcName.value.trim();
+  if(v){
+    a.name=v;
+    renderAcSelect();
+  }
+  save();
+});
+inAcName.addEventListener('blur',function(){
+  var a=ac();
+  if(!inAcName.value.trim()){
+    inAcName.value=a.name;
+  } else {
+    a.name=inAcName.value.trim();
+    renderAcSelect();
+    save();
+  }
+});
+
+/* 机型切换 */
+selType.addEventListener('change',function(){
+  ac().type=selType.value;
+  save();
+});
+
+$('#btnAddAc').addEventListener('click',function(){
+  if(aircraftList.length>=8){toast('最多 8 架飞机');return;}
+  var a=createAircraft(null,aircraftList.length,'f35');
+  aircraftList.push(a);
+  activeIdx=aircraftList.length-1;
+  inSpeed.value=a.speed;
+  inAlt.value=a.altitude;
+  inAcName.value=a.name;
+  selType.value=a.type;
+  acDot.style.background=a.color;
+  renderAcSelect();
+  renderWpList();
+  updateStartBtn();
+  save();
+  toast('已添加 '+a.name);
+});
+
+$('#btnDelAc').addEventListener('click',function(){
+  if(aircraftList.length<=1){toast('至少保留一架飞机');return;}
+  if(!confirm('确定删除「'+ac().name+'」及其航线？')) return;
+  aircraftList.splice(activeIdx,1);
+  activeIdx=clamp(activeIdx,0,aircraftList.length-1);
+  for(var i=0;i<aircraftList.length;i++){
+    aircraftList[i].color=COLORS[i%COLORS.length];
+  }
+  var a=ac();
+  inSpeed.value=a.speed;
+  inAlt.value=a.altitude;
+  inAcName.value=a.name;
+  selType.value=a.type||'f35';
+  acDot.style.background=a.color;
+  renderAcSelect();
+  renderWpList();
+  updateStartBtn();
+  save();
+});
+
+/* ================= 地图交互 ================= */
+var drag=null;
+
+function hitTest(sx,sy){
+  var wps=ac().waypoints;
+  for(var i=wps.length-1;i>=0;i--){
+    var p=llToScreen(wps[i].lng,wps[i].lat);
+    if(Math.hypot(p[0]-sx,p[1]-sy)<16) return i;
+  }
+  return -1;
+}
+
+function updateCursor(sx,sy){
+  if(ac().flight.playing){canvas.className='hand';return;}
+  var hit=(sx!==undefined&&sy!==undefined)?hitTest(sx,sy):-1;
+  if(hit>=0){canvas.className='hand';return;}
+  canvas.className=ui.addMode?'':'hand';
+}
+
+canvas.addEventListener('pointerdown',function(e){
+  if(e.pointerType==='mouse'&&e.button!==0) return;
+  var r=canvas.getBoundingClientRect();
+  var x=e.clientX-r.left,y=e.clientY-r.top;
+  var hit=ac().flight.playing?-1:hitTest(x,y);
+  if(hit>=0) drag={mode:'wp',index:hit,sx:x,sy:y,moved:0};
+  else drag={mode:'pan',sx:x,sy:y,moved:0,vx:view.x,vy:view.y};
+  try{canvas.setPointerCapture(e.pointerId);}catch(err){}
+});
+
+canvas.addEventListener('pointermove',function(e){
+  var r=canvas.getBoundingClientRect();
+  var x=e.clientX-r.left,y=e.clientY-r.top;
+  if(!drag){updateCursor(x,y);return;}
+  drag.moved=Math.max(drag.moved,Math.hypot(x-drag.sx,y-drag.sy));
+  if(drag.mode==='pan'){
+    view.x=drag.vx+(x-drag.sx);
+    view.y=drag.vy+(y-drag.sy);
+    clampView();
+  } else if(drag.mode==='wp'){
+    var ll=screenToLL(x,y);
+    var a=ac();
+    var wp=a.waypoints[drag.index];
+    if(!wp) return;
+    wp.lng=normLng(ll[0]);
+    wp.lat=clamp(ll[1],-85,85);
+    if(a.flight.finished||a.flight.leg>0||a.flight.t>0) resetFlightFor(a);
+    renderWpList();
+  }
+});
+
+canvas.addEventListener('pointerup',function(e){
+  if(!drag) return;
+  var r=canvas.getBoundingClientRect();
+  var x=e.clientX-r.left,y=e.clientY-r.top;
+  if(drag.mode==='pan'&&drag.moved<5){
+    if(ac().flight.playing) toast('飞行中无法添加航路点');
+    else if(ui.addMode){
+      var ll=screenToLL(x,y);
+      addWaypoint(ll[0],ll[1]);
+    }
+  } else if(drag.mode==='wp'&&drag.moved>2){
+    save();
+  }
+  drag=null;
+  updateCursor(x,y);
+  try{canvas.releasePointerCapture(e.pointerId);}catch(err){}
+});
+
+canvas.addEventListener('pointercancel',function(){
+  drag=null;
+  updateCursor();
+});
+
+canvas.addEventListener('wheel',function(e){
+  e.preventDefault();
+  var r=canvas.getBoundingClientRect();
+  var mx=e.clientX-r.left,my=e.clientY-r.top;
+  var factor=Math.exp(-e.deltaY*0.0018);
+  var ns=clamp(view.scale*factor,MIN_SCALE,MAX_SCALE);
+  var k=ns/view.scale;
+  view.x=mx-(mx-view.x)*k;
+  view.y=my-(my-view.y)*k;
+  view.scale=ns;
+  clampView();
+},{passive:false});
+
+canvas.addEventListener('dblclick',function(e){
+  var r=canvas.getBoundingClientRect();
+  var mx=e.clientX-r.left,my=e.clientY-r.top;
+  var ns=clamp(view.scale*1.9,MIN_SCALE,MAX_SCALE);
+  var k=ns/view.scale;
+  view.x=mx-(mx-view.x)*k;
+  view.y=my-(my-view.y)*k;
+  view.scale=ns;
+  clampView();
+});
+
+/* ================= 控件 ================= */
+var inSpeed=$('#inSpeed'),inAlt=$('#inAlt'),selTime=$('#selTime');
+var btnStart=$('#btnStart'),btnAdd=$('#btnAdd'),btnRoute=$('#btnRoute');
+var btnCk=$('#btnCk'),btnFollow=$('#btnFollow');
+
+inSpeed.addEventListener('input',function(){
+  var v=parseFloat(inSpeed.value);
+  if(!isFinite(v)) v=0;
+  ac().speed=clamp(v,0,2000);
+  if(!ac().flight.playing){ac().actualSpeed=ac().speed;}
+  save();
+});
+inSpeed.addEventListener('blur',function(){
+  ac().speed=clamp(ac().speed||250,30,700);
+  inSpeed.value=ac().speed;
+  if(!ac().flight.playing) ac().actualSpeed=ac().speed;
+  save();
+});
+
+inAlt.addEventListener('input',function(){
+  var v=parseFloat(inAlt.value);
+  if(!isFinite(v)) v=0;
+  ac().altitude=clamp(v,0,40000);
+  if(!ac().flight.playing){ac().actualAlt=ac().altitude;}
+  save();
+});
+inAlt.addEventListener('blur',function(){
+  ac().altitude=clamp(ac().altitude||10000,300,20000);
+  inAlt.value=ac().altitude;
+  if(!ac().flight.playing) ac().actualAlt=ac().altitude;
+  save();
+});
+
+selTime.addEventListener('change',function(){
+  timeState.timeScale=parseFloat(selTime.value)||1;
+  save();
+});
+
+function updateStartBtn(){
+  var a=ac();
+  if(a.flight.finished){
+    btnStart.textContent='↻ 当前飞机重飞';
+    btnStart.classList.remove('on');
+  } else if(a.flight.playing){
+    btnStart.textContent='⏸ 暂停当前飞机';
+    btnStart.classList.add('on');
+  } else {
+    btnStart.textContent='▶ 当前飞机起飞';
+    btnStart.classList.remove('on');
+  }
+}
+
+function updateAddBtn(){
+  btnAdd.textContent=ui.addMode?'✎ 添加航点中':'✋ 已结束添加';
+  btnAdd.classList.toggle('act',ui.addMode);
+  updateCursor();
+}
+function updateRouteBtn(){
+  btnRoute.textContent=ui.routeVisible?'👁 隐藏航路':'👁 显示航路';
+  btnRoute.classList.toggle('act',!ui.routeVisible);
+}
+function updateCkBtn(){
+  btnCk.textContent=ui.cockpitVisible?'🛩 隐藏驾驶舱':'🛩 显示驾驶舱';
+}
+function updateFollowBtn(){
+  btnFollow.textContent=ui.follow?'🎯 自动跟随：开':'🎯 自动跟随：关';
+  btnFollow.classList.toggle('act',ui.follow);
+}
+
+btnStart.addEventListener('click',function(){
+  var a=ac();
+  if(a.waypoints.length<2){toast('请先为当前飞机添加至少两个航路点');return;}
+  if(a.flight.finished){resetFlightFor(a);a.flight.playing=true;}
+  else a.flight.playing=!a.flight.playing;
+  renderAcSelect();
+  updateStartBtn();
+  hideTip();
+});
+
+$('#btnAll').addEventListener('click',function(){
+  var n=0;
+  for(var i=0;i<aircraftList.length;i++){
+    var a=aircraftList[i];
+    if(a.waypoints.length>=2){
+      if(a.flight.finished) resetFlightFor(a);
+      a.flight.playing=true;
+      n++;
+    }
+  }
+  renderAcSelect();
+  updateStartBtn();
+  toast(n>0?n+' 架飞机已起飞':'没有可起飞的航线');
+  hideTip();
+});
+
+$('#btnPause').addEventListener('click',function(){
+  for(var i=0;i<aircraftList.length;i++) aircraftList[i].flight.playing=false;
+  renderAcSelect();
+  updateStartBtn();
+  toast('全部暂停');
+});
+
+btnAdd.addEventListener('click',function(){
+  ui.addMode=!ui.addMode;
+  updateAddBtn();
+  toast(ui.addMode?'添加航点模式：单击地图添加':'已结束添加：可拖拽平移地图');
+  hideTip();
+});
+
+btnRoute.addEventListener('click',function(){
+  ui.routeVisible=!ui.routeVisible;
+  updateRouteBtn();
+  toast(ui.routeVisible?'已显示规划航路':'已隐藏规划航路');
+});
+
+btnFollow.addEventListener('click',function(){
+  ui.follow=!ui.follow;
+  updateFollowBtn();
+  toast(ui.follow?'自动跟随：开启':'自动跟随：已关闭');
+});
+
+btnCk.addEventListener('click',function(){
+  ui.cockpitVisible=!ui.cockpitVisible;
+  $('#cockpit').classList.toggle('hidden',!ui.cockpitVisible);
+  $('#ckS').classList.toggle('show',!ui.cockpitVisible);
+  updateCkBtn();
+  if(ui.cockpitVisible) setTimeout(resizeCockpit,30);
+});
+
+$('#ckX').addEventListener('click',function(){
+  ui.cockpitVisible=false;
+  $('#cockpit').classList.add('hidden');
+  $('#ckS').classList.add('show');
+  updateCkBtn();
+});
+$('#ckS').addEventListener('click',function(){
+  ui.cockpitVisible=true;
+  $('#cockpit').classList.remove('hidden');
+  $('#ckS').classList.remove('show');
+  updateCkBtn();
+  setTimeout(resizeCockpit,30);
+});
+
+$('#btnFit').addEventListener('click',function(){
+  if(!ac().waypoints.length){toast('请先添加航路点');return;}
+  fitRoute();
+});
+$('#btnReset').addEventListener('click',function(){
+  resetFlightFor(ac());
+  toast('已重置当前飞机');
+});
+$('#btnClear').addEventListener('click',clearAll);
+
+/* ================= 编队保存/载入 ================= */
+var selSaved=$('#selSaved');
+
+function readRoutes(){
+  try{
+    var raw=localStorage.getItem(RKEY);
+    var arr=raw?JSON.parse(raw):[];
+    return Array.isArray(arr)?arr:[];
+  }catch(e){return [];}
+}
+function writeRoutes(arr){
+  try{localStorage.setItem(RKEY,JSON.stringify(arr));}catch(e){}
+}
+function refreshSaved(sel){
+  var routes=readRoutes();
+  var cur=sel!==undefined?sel:selSaved.value;
+  if(!routes.length){
+    selSaved.innerHTML='<option value="">— 无已保存编队 —</option>';
+    selSaved.value='';
+    return;
+  }
+  var html='';
+  for(var i=0;i<routes.length;i++){
+    var r=routes[i];
+    var nAc=r.aircraft?r.aircraft.length:0;
+    var nWp=0;
+    if(r.aircraft) for(var j=0;j<r.aircraft.length;j++) nWp+=r.aircraft[j].waypoints.length;
+    html+='<option value="'+r.name+'">'+r.name+' · '+nAc+'机/'+nWp+'点</option>';
+  }
+  selSaved.innerHTML=html;
+  var exists=false;
+  for(var k=0;k<routes.length;k++) if(routes[k].name===cur){exists=true;break;}
+  selSaved.value=exists?cur:routes[routes.length-1].name;
+}
+
+function saveCurrentRoute(){
+  var totalWp=0;
+  for(var i=0;i<aircraftList.length;i++) totalWp+=aircraftList[i].waypoints.length;
+  if(totalWp<2){toast('至少需要两个航路点');return;}
+
+  var name=prompt('为本次编队命名：','编队 '+new Date().toLocaleString('zh-CN',{
+    month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}));
+  if(name===null) return;
+  name=String(name).trim();
+  if(!name){toast('名称不能为空');return;}
+
+  var routes=readRoutes();
+  var item={
+    name:name,
+    savedAt:new Date().toISOString(),
+    timeScale:timeState.timeScale,
+    activeIdx:activeIdx,
+    aircraft:[]
+  };
+  for(var j=0;j<aircraftList.length;j++){
+    var a=aircraftList[j];
+    var wps=[];
+    for(var k=0;k<a.waypoints.length;k++){
+      var w=a.waypoints[k];
+      wps.push({name:w.name,lng:+w.lng.toFixed(6),lat:+w.lat.toFixed(6)});
+    }
+    item.aircraft.push({
+      name:a.name,type:a.type||'f35',
+      speed:a.speed,altitude:a.altitude,waypoints:wps
+    });
+  }
+
+  var idx=-1;
+  for(var m=0;m<routes.length;m++) if(routes[m].name===name){idx=m;break;}
+  if(idx>=0){
+    if(!confirm('已存在同名编队「'+name+'」，是否覆盖？')) return;
+    routes[idx]=item;
+  } else routes.push(item);
+
+  writeRoutes(routes);
+  refreshSaved(name);
+  toast('已保存编队：'+name);
+}
+
+function loadSelectedRoute(){
+  var name=selSaved.value;
+  if(!name){toast('请先选择一条已保存的编队');return;}
+  var routes=readRoutes();
+  var r=null;
+  for(var i=0;i<routes.length;i++) if(routes[i].name===name){r=routes[i];break;}
+  if(!r||!Array.isArray(r.aircraft)||!r.aircraft.length){toast('该编队数据无效');return;}
+  if(!confirm('载入「'+name+'」将替换当前所有飞机与航线，继续？')) return;
+
+  aircraftList.length=0;
+  uid=1;
+  for(var j=0;j<r.aircraft.length;j++){
+    var src=r.aircraft[j];
+    var a=createAircraft(src.name||('飞机'+(j+1)),j,src.type||'f35');
+    if(isFinite(src.speed)) a.speed=clamp(src.speed,30,700);
+    if(isFinite(src.altitude)) a.altitude=clamp(src.altitude,300,20000);
+    a.actualSpeed=a.speed;
+    a.actualAlt=a.altitude;
+    a.waypoints=[];
+    if(Array.isArray(src.waypoints)){
+      for(var k=0;k<src.waypoints.length;k++){
+        var w=src.waypoints[k];
+        var lng=Number(w.lng),lat=Number(w.lat);
+        if(!isFinite(lng)||!isFinite(lat)) continue;
+        a.waypoints.push({id:'wp'+(uid++),name:w.name||('WP'+(k+1)),lng:lng,lat:lat});
+      }
+    }
+    aircraftList.push(a);
+  }
+  for(var ii=0;ii<aircraftList.length;ii++){
+    aircraftList[ii].color=COLORS[ii%COLORS.length];
+  }
+  activeIdx=clamp(r.activeIdx||0,0,aircraftList.length-1);
+  if(isFinite(r.timeScale)){
+    timeState.timeScale=r.timeScale;
+    selTime.value=String(r.timeScale);
+  }
+
+  var a2=ac();
+  inSpeed.value=a2.speed;
+  inAlt.value=a2.altitude;
+  inAcName.value=a2.name;
+  selType.value=a2.type||'f35';
+  acDot.style.background=a2.color;
+
+  renderAcSelect();
+  renderWpList();
+  updateStartBtn();
+  save();
+  fitRoute();
+  toast('已载入编队：'+name);
+}
+
+function deleteSelectedRoute(){
+  var name=selSaved.value;
+  if(!name){toast('请先选择一条已保存的编队');return;}
+  if(!confirm('确定删除编队「'+name+'」？')) return;
+  var routes=readRoutes();
+  var out=[];
+  for(var i=0;i<routes.length;i++) if(routes[i].name!==name) out.push(routes[i]);
+  writeRoutes(out);
+  refreshSaved('');
+  toast('已删除：'+name);
+}
+
+$('#btnSave').addEventListener('click',saveCurrentRoute);
+$('#btnLoad').addEventListener('click',loadSelectedRoute);
+$('#btnDel').addEventListener('click',deleteSelectedRoute);
+
+/* ================= 存储 ================= */
+function save(){
+  try{
+    var arr=[];
+    for(var i=0;i<aircraftList.length;i++){
+      var a=aircraftList[i];
+      var wps=[];
+      for(var k=0;k<a.waypoints.length;k++){
+        var w=a.waypoints[k];
+        wps.push({name:w.name,lng:w.lng,lat:w.lat});
+      }
+      arr.push({
+        name:a.name,type:a.type||'f35',
+        speed:a.speed,altitude:a.altitude,waypoints:wps
+      });
+    }
+    localStorage.setItem(SKEY,JSON.stringify({
+      aircraft:arr,
+      activeIdx:activeIdx,
+      timeScale:timeState.timeScale,
+      ui:{
+        addMode:ui.addMode,routeVisible:ui.routeVisible,
+        cockpitVisible:ui.cockpitVisible,follow:ui.follow
+      }
+    }));
+  }catch(e){}
+}
+
+function load(){
+  try{
+    var raw=localStorage.getItem(SKEY);
+    if(!raw) return;
+    var d=JSON.parse(raw);
+    if(!d) return;
+
+    if(Array.isArray(d.aircraft)&&d.aircraft.length){
+      aircraftList.length=0;
+      uid=1;
+      for(var i=0;i<d.aircraft.length;i++){
+        var src=d.aircraft[i];
+        var a=createAircraft(src.name,i,src.type||'f35');
+        if(isFinite(src.speed)) a.speed=clamp(src.speed,30,700);
+        if(isFinite(src.altitude)) a.altitude=clamp(src.altitude,300,20000);
+        a.actualSpeed=a.speed;
+        a.actualAlt=a.altitude;
+        a.waypoints=[];
+        if(Array.isArray(src.waypoints)){
+          for(var k=0;k<src.waypoints.length;k++){
+            var w=src.waypoints[k];
+            var lng=Number(w.lng),lat=Number(w.lat);
+            if(!isFinite(lng)||!isFinite(lat)) continue;
+            a.waypoints.push({id:'wp'+(uid++),name:w.name||('WP'+(k+1)),lng:lng,lat:lat});
+          }
+        }
+        aircraftList.push(a);
+      }
+      for(var j=0;j<aircraftList.length;j++){
+        aircraftList[j].color=COLORS[j%COLORS.length];
+      }
+      activeIdx=clamp(d.activeIdx||0,0,aircraftList.length-1);
+    }
+    if(isFinite(d.timeScale)) timeState.timeScale=d.timeScale;
+    if(d.ui){
+      if(typeof d.ui.addMode==='boolean') ui.addMode=d.ui.addMode;
+      if(typeof d.ui.routeVisible==='boolean') ui.routeVisible=d.ui.routeVisible;
+      if(typeof d.ui.cockpitVisible==='boolean') ui.cockpitVisible=d.ui.cockpitVisible;
+      if(typeof d.ui.follow==='boolean') ui.follow=d.ui.follow;
+    }
+  }catch(e){}
+}
+
+/* ================= 提示 ================= */
+var tipHidden=false;
+function hideTip(){
+  if(tipHidden) return;
+  tipHidden=true;
+  $('#tip').classList.add('hide');
+}
+setTimeout(hideTip,10000);
+
+/* ================= 启动 ================= */
+function boot(){
+  resizeCanvas();
+  resizeCockpit();
+  initView();
+  load();
+
+  var a=ac();
+  inSpeed.value=a.speed;
+  inAlt.value=a.altitude;
+  inAcName.value=a.name;
+  selType.value=a.type||'f35';
+  selTime.value=String(timeState.timeScale);
+  acDot.style.background=a.color;
+
+  renderAcSelect();
+  renderWpList();
+  updateStartBtn();
+  updateAddBtn();
+  updateRouteBtn();
+  updateCkBtn();
+  updateFollowBtn();
+  refreshSaved('');
+
+  $('#cockpit').classList.toggle('hidden',!ui.cockpitVisible);
+  $('#ckS').classList.toggle('show',!ui.cockpitVisible);
+
+  if(a.waypoints.length>=2) fitRoute();
+
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener('resize',function(){
+  var ow=W,oh=H;
+  resizeCanvas();
+  resizeCockpit();
+  view.x+=(W-ow)/2;
+  view.y+=(H-oh)/2;
+  clampView();
+});
+window.addEventListener('orientationchange',function(){
+  setTimeout(function(){
+    var ow=W,oh=H;
+    resizeCanvas();
+    resizeCockpit();
+    view.x+=(W-ow)/2;
+    view.y+=(H-oh)/2;
+    clampView();
+  },220);
+});
+
+document.addEventListener('keydown',function(e){
+  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT') return;
+  if(e.code==='Space'){e.preventDefault();btnStart.click();}
+  else if(e.key==='f'||e.key==='F') fitRoute();
+  else if(e.key==='r'||e.key==='R'){resetFlightFor(ac());toast('已重置');}
+  else if(e.key==='a'||e.key==='A') btnAdd.click();
+  else if(e.key==='v'||e.key==='V') btnRoute.click();
+  else if(e.key==='c'||e.key==='C') btnCk.click();
+  else if(e.key==='g'||e.key==='G') btnFollow.click();
+  else if(e.key==='h'||e.key==='H'){
+    var c=project(HOME.lng,HOME.lat);
+    view.x=W/2-c[0]*view.scale;
+    view.y=H/2-c[1]*view.scale;
+    clampView();
+  }
+});
+
+boot();
+
+})();
+</script>
+</body>
+</html>
